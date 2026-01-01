@@ -19,6 +19,15 @@ const LANGUAGE_CONFIG = {
 };
 
 // Helper functions
+
+const headerLink = (page, name) => {
+  return page.getByRole('navigation').getByRole('link', { name });
+};
+
+const headerButton = (page, name) => {
+  return page.getByRole('navigation').getByRole('button', { name });
+};
+
 async function setupSearchTracking(page) {
   const apiCalls = [];
   let availableMovies = [];
@@ -224,67 +233,127 @@ async function testOffers(page, request, isArabic = false) {
 test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionality', async ({ page }) => {
   await page.goto('https://www.novocinemas.com/');
   await page.locator('div').filter({ hasText: /^QATAR$/ }).getByRole('button').click();
-  await expect(page.getByRole('navigation').getByRole('img', { name: 'Logo' })).toBeVisible();
 
+  await expect(
+    page.getByRole('navigation').getByRole('img', { name: 'Logo' })
+  ).toBeVisible();
+
+  // -------------------------------
   // Food & Beverages > Online Order
-  await page.getByRole('button', { name: 'Food & Beverages' }).click();
-  await expect(page.getByRole('link', { name: 'Online Order' })).toBeVisible();
-  await page.getByRole('link', { name: 'Online Order' }).click();
+  // -------------------------------
+  await headerButton(page, 'Food & Beverages').click();
+
+  const onlineOrder = headerLink(page, 'Online Order');
+  await expect(onlineOrder).toBeVisible()
+  await onlineOrder.click();
+
   await expect(page).toHaveURL(/takeaway/);
-  await expect(page.getByRole('heading', { name: 'Food & Drinks To-Go' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Food & Drinks To-Go' })
+  ).toBeVisible();
 
+  // -------------------------------
   // Food & Beverages > Home Delivery
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await page.getByRole('button', { name: 'Food & Beverages' }).click();
-  await expect(page.getByRole('link', { name: 'Home Delivery' })).toBeVisible();
-  await page.getByRole('link', { name: 'Home Delivery' }).click();
+
+  await headerButton(page, 'Food & Beverages').click();
+
+  const homedelivery = headerLink(page, 'Home Delivery');
+  await expect(homedelivery).toBeVisible();
+  await homedelivery.click();
+
   await expect(page).toHaveURL(/homedelivery/);
-  await expect(page.locator('div').filter({ hasText: 'Enjoy Novo CinemasTreats' }).nth(4)).toBeVisible();
+  await expect(
+    page.locator('div').filter({ hasText: 'Enjoy Novo CinemasTreats' }).nth(4)
+  ).toBeVisible();
 
+  // -------------------------------
   // Offers & Promotions
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await expect(page.getByRole('link', { name: 'Offers & Promotions' })).toBeVisible();
-  await page.getByRole('link', { name: 'Offers & Promotions' }).click();
+
+  const offerandPromotions = headerLink(page, 'Offers & Promotions');
+  await expect(offerandPromotions).toBeVisible(); 
+  await offerandPromotions.click();
+
   await expect(page).toHaveURL(/promotions/);
-  await expect(page.getByRole('heading', { name: 'Offers & Promotions' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Offers & Promotions' })
+  ).toBeVisible();
 
+  // -------------------------------
   // Locations
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Locations' })).toBeVisible();
-  await page.getByRole('navigation').getByRole('link', { name: 'Locations' }).click();
+
+  const locations = headerLink(page, 'Locations');
+  await expect(locations).toBeVisible();  
+  await locations.click();
+
   await expect(page).toHaveURL(/location/);
-  await expect(page.getByRole('heading', { name: 'Explore our Locations' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Explore our Locations' })
+  ).toBeVisible();
 
+  // -------------------------------
   // Experiences
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Experiences' })).toBeVisible();
-  await page.getByRole('navigation').getByRole('link', { name: 'Experiences' }).click();
+
+  const experiecnces = headerLink(page, 'Experiences');
+  await expect(experiecnces).toBeVisible();
+  await experiecnces.click();
+
   await expect(page).toHaveURL(/experiences/);
-  await expect(page.getByRole('heading', { name: 'Novo Experiences' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Novo Experiences' })
+  ).toBeVisible();
 
+  // -------------------------------
   // Private Booking
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'Private Booking' })).toBeVisible();
-  await page.getByRole('navigation').getByRole('link', { name: 'Private Booking' }).click();
-  await expect(page).toHaveURL(/privatebooking/);
-  await expect(page.getByRole('heading', { name: 'Private Booking' })).toBeVisible();
 
+  const privateBooking = headerLink(page, 'Private Booking');
+  await expect(privateBooking).toBeVisible();
+  await privateBooking.click();
+
+  await expect(page).toHaveURL(/privatebooking/);
+  await expect(
+    page.getByRole('heading', { name: 'Private Booking' })
+  ).toBeVisible();
+
+  // -------------------------------
   // Premiere Club
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  const premiereClubLink = page.getByRole('navigation').getByRole('link', { name: 'Premiere Club' });
-  await expect(premiereClubLink).toBeVisible();
+
+  const premiereclub = headerLink(page, 'Premiere Club');
+  await expect(premiereclub).toBeVisible(); 
+  await premiereclub.click();
   await page.goto('https://qa.novocinemas.com/premiereclub');
+
   await expect(page).toHaveURL(/premiereclub/);
   await expect(page.locator('text=Premiere Club').first()).toBeVisible();
 
-  // Language switching
+  // -------------------------------
+  // Language Switching
+  // -------------------------------
   await page.goto('https://qa.novocinemas.com/home');
-  await page.getByRole('navigation').getByRole('button', { name: 'العربية' }).click();
-  await expect(page.getByRole('navigation').getByRole('link', { name: 'العروض الترويجية' })).toBeVisible();
+
+  await headerButton(page, 'العربية').click();
+
+  await expect(
+    headerLink(page, 'العروض الترويجية')
+  ).toBeVisible();
+
   await expect(page.getByRole('navigation')).toContainText('العروض الترويجية');
   await expect(page.getByRole('navigation')).toContainText('الحجوزات الخاصة');
-  await page.getByRole('navigation').getByRole('button', { name: 'ENG' }).click({force: true});
+
+  await headerButton(page, 'ENG').click({ force: true });
 });
+
 
 test('TC002 - Verify English Search Functionality and API Integration', async ({ page }) => {
   const { apiCalls, getMovieName } = await setupSearchTracking(page);
