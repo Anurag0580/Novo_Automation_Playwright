@@ -1,5 +1,13 @@
 import { expect } from '@playwright/test';
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
+
+if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
+  throw new Error('❌ Required URLs missing in .env');
+}
+
 // ==================== CONFIGURATION ====================
 
 export const LANGUAGE_CONFIG = {
@@ -19,7 +27,7 @@ export const LANGUAGE_CONFIG = {
   }
 };
 
-export const OFFER_API = 'https://backend.novocinemas.com/api/home/offer-groups?country_id=1&channel=web&istop10=true';
+export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=1&channel=web&istop10=true`;
 
 // ==================== HEADER HELPERS ====================
 
@@ -34,17 +42,18 @@ export const headerButton = (page, name) => {
 // ==================== SEARCH HELPERS ====================
 
 export async function setupSearchTracking(page) {
+  console.log('📡 Search API tracking enabled');
   const apiCalls = [];
   let availableMovies = [];
 
   page.on('request', (req) => {
-    if (req.url().includes('backend.novocinemas.com/api/home/search')) {
+    if (req.url().includes('/api/home/search')) {
       apiCalls.push(req.url());
     }
   });
 
   page.on('response', async (res) => {
-    if (res.url().includes('backend.novocinemas.com/api/home/search')) {
+  if (res.url().includes('/api/home/search')) {
       try {
         const data = await res.json();
         if (data?.data?.movies) {
@@ -91,8 +100,9 @@ export async function verifyScrollable(locator) {
 
 export async function fetchMoviesFromAPI(page) {
   try {
+    console.log('🎬 Fetching movies from Movies API');
     const response = await page.request.get(
-      'https://backend.novocinemas.com/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web'
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
     );
 
     if (!response.ok()) {
@@ -117,6 +127,7 @@ export async function fetchMoviesFromAPI(page) {
         })) || []
     );
   } catch (error) {
+    console.warn('⚠️ Failed to fetch movies from API');
     return [];
   }
 }
@@ -159,13 +170,15 @@ export async function testMovieInteraction(page, movie, config, shouldNavigateBa
 // ==================== MOVIES TEST RUNNER ====================
 
 export async function runMoviesTest(page, languageKey) {
+  console.log(`🎥 Running Movies Test in ${languageKey.toUpperCase()}`);
   const config = LANGUAGE_CONFIG[languageKey];
 
   const apiMovies = await fetchMoviesFromAPI(page);
   expect(apiMovies.length).toBeGreaterThan(0);
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await page.waitForLoadState('networkidle');
+  console.log(`🌐 Switching language to ${languageKey}`);
 
   if (languageKey !== 'english') {
     await page.getByRole('navigation').getByRole('button', { name: config.buttonName }).click();
@@ -202,7 +215,7 @@ export async function runMoviesTest(page, languageKey) {
 
     await testMovieInteraction(page, movie, config, true);
   }
-
+  console.log('🔍 Navigating via Explore More');
   await expect(page.getByRole('button', { name: config.exploreMoreText }).first()).toBeVisible();
   await page.getByRole('button', { name: config.exploreMoreText }).first().click();
   await page.waitForLoadState('networkidle');
@@ -343,9 +356,9 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
 
     // Return to home for next offer
     console.log('🏠 Returning to home page...');
-    await page.goto('https://qa.novocinemas.com/home', {
-      waitUntil: 'domcontentloaded'
-    });
+    await page.goto(`${BASE_URL}/home`, {
+  waitUntil: 'domcontentloaded'
+});
     await waitForOffersCarouselReady(page);
   }
 }

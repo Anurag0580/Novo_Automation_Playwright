@@ -18,11 +18,21 @@ import {
   testOffersInLanguage
 } from './helpers/home_helpers.js';
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
+
+if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
+  throw new Error('❌ Required URLs missing in .env');
+}
+
+
 // ==================== TEST CASES ====================
 
-test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionality', async ({ page }) => {
-  await page.goto('https://www.novocinemas.com/');
+test('TC001 - Verify Homepage Navigation Header and Menu Links Functionality', async ({ page }) => {
+  await page.goto(`${REAL_DOMAIN_URL}/`);
   await page.locator('div').filter({ hasText: /^QATAR$/ }).getByRole('button').click();
+  console.log('🌍 Country selected: QATAR');
 
   await expect(page.getByRole('navigation').getByRole('img', { name: 'Logo' })).toBeVisible();
 
@@ -35,7 +45,7 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   await expect(page.getByRole('heading', { name: 'Food & Drinks To-Go' })).toBeVisible();
 
   // Food & Beverages > Home Delivery
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await headerButton(page, 'Food & Beverages').click();
   const homedelivery = headerLink(page, 'Home Delivery');
   await expect(homedelivery).toBeVisible();
@@ -46,7 +56,7 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   ).toBeVisible();
 
   // Offers & Promotions
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const offerandPromotions = headerLink(page, 'Offers & Promotions');
   await expect(offerandPromotions).toBeVisible();
   await offerandPromotions.click();
@@ -54,7 +64,7 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   await expect(page.getByRole('heading', { name: 'Offers & Promotions' })).toBeVisible();
 
   // Locations
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const locations = headerLink(page, 'Locations');
   await expect(locations).toBeVisible();
   await locations.click();
@@ -62,7 +72,7 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   await expect(page.getByRole('heading', { name: 'Explore our Locations' })).toBeVisible();
 
   // Experiences
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const experiecnces = headerLink(page, 'Experiences');
   await expect(experiecnces).toBeVisible();
   await experiecnces.click();
@@ -70,7 +80,7 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   await expect(page.getByRole('heading', { name: 'Novo Experiences' })).toBeVisible();
 
   // Private Booking
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const privateBooking = headerLink(page, 'Private Booking');
   await expect(privateBooking).toBeVisible();
   await privateBooking.click();
@@ -78,28 +88,30 @@ test.only('TC001 - Verify Homepage Navigation Header and Menu Links Functionalit
   await expect(page.getByRole('heading', { name: 'Private Booking' })).toBeVisible();
 
   // Premiere Club
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const premiereclub = headerLink(page, 'Premiere Club');
   await expect(premiereclub).toBeVisible();
   await premiereclub.click();
-  await page.goto('https://qa.novocinemas.com/premiereclub');
+  await page.goto(`${BASE_URL}/premiereclub`);
   await expect(page).toHaveURL(/premiereclub/);
   await expect(page.locator('text=Premiere Club').first()).toBeVisible();
 
   // Language Switching
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
+  console.log('🔄 Switching language to Arabic');
   await headerButton(page, 'العربية').click();
   await expect(headerLink(page, 'العروض الترويجية')).toBeVisible();
   await expect(page.getByRole('navigation')).toContainText('العروض الترويجية');
   await expect(page.getByRole('navigation')).toContainText('الحجوزات الخاصة');
 
   await headerButton(page, 'ENG').click({ force: true });
+  console.log('✅ TC001 COMPLETED');
 });
 
 test('TC002 - Verify English Search Functionality and API Integration', async ({ page }) => {
   const { apiCalls, getMovieName } = await setupSearchTracking(page);
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   const navButton = page
     .getByRole('navigation')
     .getByRole('button')
@@ -119,6 +131,7 @@ test('TC002 - Verify English Search Functionality and API Integration', async ({
   await searchBox.fill(searchTerm);
   await page.waitForTimeout(2000);
   expect(apiCalls.some((call) => call.includes(`search=${encodeURIComponent(searchTerm)}`))).toBeTruthy();
+  console.log(`🔍 Search triggered for movie: ${searchTerm}`);
 
   await verifyScrollable(searchPopup);
 
@@ -126,12 +139,13 @@ test('TC002 - Verify English Search Functionality and API Integration', async ({
   await expect(searchBox).toHaveValue('');
   expect(apiCalls.some((url) => url.includes('search=&country_id=1&channel=web'))).toBeTruthy();
   await page.locator('.lucide.lucide-x.cursor-pointer').click();
+  console.log('✅ TC002 COMPLETED');
 });
 
 test('TC003 - Verify Arabic Search Functionality and Language Support', async ({ page }) => {
   const { apiCalls, getMovieName } = await setupSearchTracking(page);
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await page.getByRole('navigation').getByRole('button', { name: 'العربية' }).click();
 
   const navButton = page
@@ -149,21 +163,23 @@ test('TC003 - Verify Arabic Search Functionality and Language Support', async ({
   await searchBox.fill(arabicSearchTerm);
   await page.waitForTimeout(2000);
   expect(apiCalls.some((call) => call.includes(`search=${encodeURIComponent(arabicSearchTerm)}`))).toBeTruthy();
+  console.log(`🔍 Arabic search triggered for movie: ${arabicSearchTerm}`);
 
   await searchBox.clear();
   await page.locator('.lucide.lucide-x.cursor-pointer').click();
+  console.log('✅ TC003 COMPLETED');
 });
 
 test('TC004 - Verify Homepage Banner Functionality and Navigation', async ({ page }) => {
   test.setTimeout(120000);
 
   try {
-    await page.goto('https://qa.novocinemas.com/home', {
+    await page.goto(`${BASE_URL}/home`, {
       waitUntil: 'domcontentloaded',
       timeout: 60000
     });
   } catch (error) {
-    await page.goto('https://www.novocinemas.com/home', {
+    await page.goto(`${REAL_DOMAIN_URL}/home`, {
       waitUntil: 'domcontentloaded',
       timeout: 60000
     });
@@ -206,6 +222,7 @@ test('TC004 - Verify Homepage Banner Functionality and Navigation', async ({ pag
   };
 
   // 1. Verify banner visibility and movie title matching
+  console.log('🎞 Banner visible and interaction started');
   await test.step('Verify banner visibility and movie title matching', async () => {
     const bannerContainer = await findElement([
       '.slick-slider',
@@ -254,7 +271,7 @@ test('TC004 - Verify Homepage Banner Functionality and Navigation', async ({ pag
       }
 
       await page.waitForTimeout(3000);
-      await page.goBack().catch(() => page.goto('https://www.novocinemas.com/home'));
+      await page.goBack().catch(() => page.goto(`${REAL_DOMAIN_URL}/home`));
       await page.waitForTimeout(2000);
     }
   });
@@ -386,7 +403,9 @@ test('TC004 - Verify Homepage Banner Functionality and Navigation', async ({ pag
     }
 
     expect(changed).toBe(true);
+    console.log('⏭ Banner auto-scroll verified');
   });
+  console.log('✅ TC004 COMPLETED');
 });
 
 test('TC005 - Verify Movies Section Functionality in English', async ({ page }) => {
@@ -409,7 +428,7 @@ test('TC007 - Verify Top 10 Movies Section and Video Playback (Dynamic)', async 
 
   // 1. Fetch Trending Movies API
   const apiResponse = await request.get(
-    'https://backend.novocinemas.com/api/home/movies/trending?country_id=1&channel=web'
+    `${BACKEND_URL}/api/home/movies/trending?country_id=1&channel=web`
   );
 
   expect(apiResponse.ok()).toBeTruthy();
@@ -418,6 +437,7 @@ test('TC007 - Verify Top 10 Movies Section and Video Playback (Dynamic)', async 
   const movies = apiData.data || [];
 
   expect(movies.length).toBeGreaterThan(0);
+  console.log(`🎬 Trending movies fetched: ${movies.length}`);
 
   // Prefer movie with trailer, fallback to first movie
   const testMovie = movies.find((m) => m.movie_trailer_link && m.movie_title) || movies[0];
@@ -426,7 +446,7 @@ test('TC007 - Verify Top 10 Movies Section and Video Playback (Dynamic)', async 
   const hasTrailer = Boolean(testMovie.movie_trailer_link);
 
   // 2. Load Homepage
-  await page.goto('https://qa.novocinemas.com/');
+  await page.goto(`${BASE_URL}/home`);
 
   await expect(page.getByText('Top 10 Movies')).toBeVisible();
 
@@ -544,7 +564,7 @@ test('TC008 - Verify Trending Items Display and Image Loading', async ({ page, r
   test.setTimeout(30000);
 
   const apiUrl =
-    'https://backend.novocinemas.com/api/booking/concessions/cinema/3/trending?country_id=1&channel=web';
+    `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=1&channel=web`;
   let apiItems = [];
 
   await test.step('Get trending items from API', async () => {
@@ -554,9 +574,10 @@ test('TC008 - Verify Trending Items Display and Image Loading', async ({ page, r
     const data = await response.json();
     apiItems = data.data || [];
   });
+  console.log(`📦 Trending items received from API: ${apiItems.length}`);
 
   await test.step('Load homepage', async () => {
-    await page.goto('https://qa.novocinemas.com/home');
+    await page.goto(`${BASE_URL}/home`);
     await expect(page.getByText('Trending at Novo')).toBeVisible();
   });
 
@@ -576,7 +597,7 @@ test('TC008 - Verify Trending Items Display and Image Loading', async ({ page, r
   });
 });
 
-test('Offers & Promotions | Validate first 2 offers (EN + AR)', async ({ page, request }) => {
+test('TC009 – Verify First Two Offers Display Correctly in English and Arabic Using Offers API', async ({ page, request }) => {
   test.setTimeout(240000);
 
   console.log('\n🚀 TEST STARTED: Offers & Promotions Validation');
@@ -598,7 +619,7 @@ test('Offers & Promotions | Validate first 2 offers (EN + AR)', async ({ page, r
 
   // ---------- ENGLISH ----------
   console.log('\n🇬🇧 Starting English language tests...');
-  await page.goto('https://qa.novocinemas.com/home', {
+  await page.goto(`${BASE_URL}/home`, {
     waitUntil: 'domcontentloaded'
   });
   await waitForOffersCarouselReady(page);
@@ -624,7 +645,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
   test.setTimeout(300000);
 
   try {
-    await page.goto('https://qa.novocinemas.com/home', {
+    await page.goto(`${BASE_URL}/home`, {
       waitUntil: 'domcontentloaded',
       timeout: 30000
     });
@@ -637,7 +658,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
   let apiData, experiences;
   try {
     const apiUrl =
-      'https://backend.novocinemas.com/api/home/pages?key=experience&country_id=1&channel=web';
+      `${BACKEND_URL}/api/home/pages?key=experience&country_id=1&channel=web`;
     const response = await request.get(apiUrl);
     expect(response.ok()).toBeTruthy();
 
@@ -647,6 +668,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
   } catch (error) {
     throw error;
   }
+  console.log(`🧩 Experiences fetched from API: ${experiences.length}`);
 
   let processedCount = 0;
   let skippedCount = 0;
@@ -656,7 +678,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
     const expName = exp.page_name || `Experience ${index + 1}`;
     const expId = exp.id;
     const bannerLogo = exp.page_json?.logo;
-    const expectedUrl = `https://qa.novocinemas.com/experiences/${expId}`;
+    const expectedUrl = `${BASE_URL}/experiences/${expId}`;
 
     if (!expId) {
       skippedCount++;
@@ -667,7 +689,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
     try {
       const currentUrl = page.url();
       if (!currentUrl.includes('/home')) {
-        await page.goto('https://qa.novocinemas.com/home', {
+        await page.goto(`${BASE_URL}/home`, {
           waitUntil: 'domcontentloaded',
           timeout: 15000
         });
@@ -815,7 +837,7 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
 
         if (currentUrl.includes('/experiences/')) {
           navigationSuccess = true;
-        } else if (currentUrl !== 'https://qa.novocinemas.com/home') {
+        } else if (currentUrl !== `${BASE_URL}/home`) {
           navigationSuccess = true;
         } else {
           failedExperiences.push({
@@ -845,10 +867,14 @@ test('TC010 - Verify Experience Cards Display and Navigation', async ({ page, re
 
   expect(experiences.length).toBeGreaterThan(0);
   expect(processedCount).toBeGreaterThan(0);
+  console.log(
+  `✅ TC010 COMPLETED | Processed: ${processedCount}, Skipped: ${skippedCount}`
+);
+
 });
 
 test('TC011 - Verify Homepage Footer Links and Social Media Integration', async ({ page }) => {
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
 
   await expect(page.getByRole('img', { name: 'PromoBG' })).toBeVisible();
   await expect(page.locator('body')).toContainText('Download Novo App!');
@@ -889,6 +915,7 @@ test('TC011 - Verify Homepage Footer Links and Social Media Integration', async 
     await expect(newPage.url()).toContain(app.expectedUrl.split('?')[0]);
     await newPage.close();
   }
+  console.log('🔗 Social media links validated');
 
   await expect(page.getByRole('contentinfo').getByRole('link', { name: '44260777' })).toBeVisible();
   await expect(
@@ -943,7 +970,7 @@ test('TC011 - Verify Homepage Footer Links and Social Media Integration', async 
 });
 
 test('TC012 - Verify Footer Navigation Links Functionality', async ({ page }) => {
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
 
   // Test About Us footer link
   await expect(page.getByRole('listitem').filter({ hasText: 'About Us' })).toBeVisible();
@@ -951,10 +978,10 @@ test('TC012 - Verify Footer Navigation Links Functionality', async ({ page }) =>
     page.waitForURL('**/aboutUs'),
     page.getByRole('link', { name: 'About Us' }).click()
   ]);
-  await expect(page.url()).toContain('https://qa.novocinemas.com/aboutUs');
+  await expect(page.url()).toContain(`${BASE_URL}/aboutUs`);
   await expect(page.getByRole('heading', { name: 'Our Story' })).toBeVisible();
   await page.getByRole('button', { name: 'Go Back' }).click();
-  await expect(page.url()).toContain('https://qa.novocinemas.com/home');
+  await expect(page.url()).toContain(`${BASE_URL}/home`);
 
   // Test Advertise With Us footer link
   await expect(page.getByRole('listitem').filter({ hasText: 'Advertise With Us' })).toBeVisible();
@@ -962,10 +989,10 @@ test('TC012 - Verify Footer Navigation Links Functionality', async ({ page }) =>
     page.waitForURL('**/advertise'),
     page.getByRole('link', { name: 'Advertise With Us' }).click()
   ]);
-  await expect(page.url()).toContain('https://qa.novocinemas.com/advertise');
+  await expect(page.url()).toContain(`${BASE_URL}/advertise`);
   await expect(page.getByRole('heading', { name: 'Promote Your Brand at Novo' })).toBeVisible();
   await page.getByRole('button', { name: 'Go Back' }).click();
-  await expect(page.url()).toContain('https://qa.novocinemas.com/home');
+  await expect(page.url()).toContain(`${BASE_URL}/home`);
 
   // Test Careers footer link
   await expect(page.getByRole('listitem').filter({ hasText: 'Careers' })).toBeVisible();
@@ -973,10 +1000,10 @@ test('TC012 - Verify Footer Navigation Links Functionality', async ({ page }) =>
     page.waitForURL('**/career'),
     page.getByRole('link', { name: 'Careers' }).click()
   ]);
-  await expect(page.url()).toContain('https://qa.novocinemas.com/career');
+  await expect(page.url()).toContain(`${BASE_URL}/career`);
   await expect(page.getByRole('heading', { name: 'Careers' })).toBeVisible();
   await page.getByRole('button', { name: 'Go Back' }).click();
-  await expect(page.url()).toContain('https://qa.novocinemas.com/home');
+  await expect(page.url()).toContain(`${BASE_URL}/home`);
 
   // Test Promotions footer link
   await expect(page.getByRole('listitem').filter({ hasText: 'Promotions' })).toBeVisible();
@@ -984,14 +1011,14 @@ test('TC012 - Verify Footer Navigation Links Functionality', async ({ page }) =>
     page.waitForURL('**/promotions'),
     page.getByRole('contentinfo').getByRole('link', { name: 'Promotions' }).click()
   ]);
-  await expect(page.url()).toContain('https://qa.novocinemas.com/promotions');
+  await expect(page.url()).toContain(`${BASE_URL}/promotions`);
   await expect(page.getByRole('heading', { name: 'Offers & Promotions' })).toBeVisible();
   await page.getByRole('button', { name: 'Go Back' }).click();
-  await expect(page.url()).toContain('https://qa.novocinemas.com/home');
+  await expect(page.url()).toContain(`${BASE_URL}/home`);
 
   // Test Contact Us footer link
   await expect(page.getByRole('listitem').filter({ hasText: 'Contact Us' })).toBeVisible();
   await page.getByRole('link', { name: 'Contact Us' }).click();
   await page.waitForTimeout(1000);
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
 });
