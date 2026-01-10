@@ -10,7 +10,21 @@ import {
 } from './helpers/direct-fnb-helpers.js';
 import {applyAndRemoveGiftCardPayment, applyPartialGiftCardAndProceedToCreditPayment, completePayment, completePaymentWithGiftCard , applyNovoWalletOnly} from "./helpers/booking-helpers.js";
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
+if (!BASE_URL || !BACKEND_URL) {
+  throw new Error('❌ Frontend or Backend URL missing in env');
+}
+
 async function loginAndCaptureTokenDirectFNB(page) {
+  const EMAIL = process.env.LOGIN_EMAIL;
+  const PASSWORD = process.env.LOGIN_PASSWORD;
+
+  if (!EMAIL || !PASSWORD) {
+    throw new Error('❌ LOGIN_EMAIL or LOGIN_PASSWORD is missing in .env');
+  }
+
   let authToken = null;
 
   const tokenListener = (req) => {
@@ -22,21 +36,14 @@ async function loginAndCaptureTokenDirectFNB(page) {
 
   page.on('request', tokenListener);
 
-  // --- Login ---
-  await page.getByRole('textbox', { name: 'Enter your email' })
-    .fill('Anurag.Gupta@enpointe.io');
-
-  await page.getByRole('textbox', { name: 'Enter your password' })
-    .fill('Anurag@123');
-
+  await page.getByRole('textbox', { name: 'Enter your email' }).fill(EMAIL);
+  await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();
 
-  // ✅ Direct F&B specific wait
   await expect(
     page.getByRole('button', { name: /CLICK HERE to order F&B/i })
   ).toBeVisible({ timeout: 15000 });
 
-  // --- Allow API calls to fire ---
   await page.waitForTimeout(3000);
 
   if (!authToken) {
@@ -51,7 +58,6 @@ async function loginAndCaptureTokenDirectFNB(page) {
     throw new Error('❌ Direct F&B auth token not captured');
   }
 
-  // --- Persist token ---
   await page.evaluate(([token]) => {
     localStorage.setItem('auth_token', token.replace('Bearer ', ''));
     localStorage.setItem('access_token', token.replace('Bearer ', ''));
@@ -61,18 +67,20 @@ async function loginAndCaptureTokenDirectFNB(page) {
   return authToken;
 }
 
+
 async function fetchCinemaDetails(request, lat, long, countryId = 1) {
   try {
     const response = await request.get(
-      `https://backend.novocinemas.com/api/home/cinemas?lat=${lat}&long=${long}&country_id=${countryId}&channel=web`,
-      {
-        headers: {
-          'accept': 'application/json, text/plain, */*',
-          'origin': 'https://qa.novocinemas.com',
-          'referer': 'https://qa.novocinemas.com/',
-        }
-      }
-    );
+  `${BACKEND_URL}/api/home/cinemas?lat=${lat}&long=${long}&country_id=${countryId}&channel=web`,
+  {
+    headers: {
+      accept: 'application/json, text/plain, */*',
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
+    }
+  }
+);
+
     
     if (!response.ok()) {
       console.error('Cinema details API response not OK:', response.status());
@@ -89,15 +97,16 @@ async function fetchCinemaDetails(request, lat, long, countryId = 1) {
 async function fetchCinemaTimings(request, countryId = 1) {
   try {
     const response = await request.get(
-      `https://backend.novocinemas.com/api/cinema/cinema-timings?country_id=${countryId}&channel=web`,
-      {
-        headers: {
-          'accept': 'application/json, text/plain, */*',
-          'origin': 'https://qa.novocinemas.com',
-          'referer': 'https://qa.novocinemas.com/',
-        }
-      }
-    );
+  `${BACKEND_URL}/api/cinema/cinema-timings?country_id=${countryId}&channel=web`,
+  {
+    headers: {
+      accept: 'application/json, text/plain, */*',
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
+    }
+  }
+);
+
     
     if (!response.ok()) {
       console.error('Cinema timings API response not OK:', response.status());
@@ -115,7 +124,7 @@ test("TC_01 – Verify Direct F&B Cinema Listing Using Cinema Details and Timing
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
   
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "networkidle" });
+  await page.goto(`${BASE_URL}/home`, { waitUntil: 'networkidle' });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -286,7 +295,7 @@ test('TC_02 – Verify Direct F&B Order with Item Without Modifiers and Successf
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -339,7 +348,7 @@ test('TC_02 – Verify Direct F&B Order with Item Without Modifiers and Successf
     // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -363,7 +372,7 @@ test('TC_03 – Verify Direct F&B Order with Item Having Modifiers and Successfu
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -415,7 +424,7 @@ test('TC_03 – Verify Direct F&B Order with Item Having Modifiers and Successfu
   // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -439,7 +448,7 @@ test('TC_04 – Verify Direct F&B Order with Item Having Alternates and Successf
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -491,7 +500,7 @@ test('TC_04 – Verify Direct F&B Order with Item Having Alternates and Successf
   // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -515,7 +524,7 @@ test('TC_05 – Verify Direct F&B Order with Item Without Modifiers Using Gift C
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -568,7 +577,7 @@ test('TC_05 – Verify Direct F&B Order with Item Without Modifiers Using Gift C
     // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -664,7 +673,7 @@ test('TC_06 – Verify Direct F&B Gift Card Application and Removal for Item Wit
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -717,7 +726,7 @@ test('TC_06 – Verify Direct F&B Gift Card Application and Removal for Item Wit
     // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -744,7 +753,7 @@ test('TC_07 – Verify Direct F&B Order with Item Without Modifiers Using Gift C
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -797,7 +806,7 @@ test('TC_07 – Verify Direct F&B Order with Item Without Modifiers Using Gift C
     // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
@@ -848,7 +857,7 @@ test('TC_08 – Verify Direct F&B Order with Item Without Modifiers Using Novo W
   test.setTimeout(180000);
   page.setDefaultTimeout(120000);
 
-  await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+  await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded" });
   const context = page.context();
 
   await context.grantPermissions(['geolocation']);
@@ -901,7 +910,7 @@ test('TC_08 – Verify Direct F&B Order with Item Without Modifiers Using Novo W
     // ---- Capture only-concession POST API ----
 const onlyConcessionRequestPromise = page.waitForRequest(request =>
   request.method() === 'POST' &&
-  request.url().includes('/api/booking/concessions/only-concession')
+  request.url().includes(`${BACKEND_URL}/api/booking/concessions/only-concession`)
 );
 await Promise.all([
   page.waitForURL(
