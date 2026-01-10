@@ -1,6 +1,7 @@
 import {test, expect} from '@playwright/test';
 import {
   BASE_URL,
+  BACKEND_URL,   // ✅ ADD THIS
   TEST_CARD_NUMBER,
   loginAndCaptureToken,
   completePayment,
@@ -105,7 +106,8 @@ test("TC_03 – Verify Gift Card Top-Up Flow Using Existing Gift Card Number", a
   await page.getByRole('textbox', { name: 'Enter your gift Card Number' }).fill(TEST_CARD_NUMBER);
   
   const apiResponsePromise = page.waitForResponse(
-    response => response.url().includes(`/api/gifts-wallets/gift-card/balance/${TEST_CARD_NUMBER}`) 
+    response => response.url().includes(
+  `${BACKEND_URL}/api/gifts-wallets/gift-card/balance/${TEST_CARD_NUMBER}`) 
       && response.status() === 200
   );
   
@@ -142,7 +144,8 @@ test("TC_04 – Verify Gift Card Balance Check Flow and Top-Up Navigation", asyn
   await page.getByRole('button', { name: 'Check balance now' }).click();
   
   const apiResponse = await page.waitForResponse(
-    response => response.url().includes(`/api/gifts-wallets/gift-card/balance/${TEST_CARD_NUMBER}`) 
+    response => response.url().includes(
+  `${BACKEND_URL}/api/gifts-wallets/gift-card/balance/${TEST_CARD_NUMBER}`) 
       && response.status() === 200
   );
   

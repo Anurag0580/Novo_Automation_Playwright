@@ -1,10 +1,16 @@
 import { test, expect } from '@playwright/test';
 
 // ==================== CONSTANTS ====================
-const BASE_URL = 'https://qa.novocinemas.com';
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
 const TEST_CARD_NUMBER = '2000001537711200';
 const DEFAULT_TIMEOUT = 180000;
 const DEFAULT_PAGE_TIMEOUT = 120000;
+
+if (!BASE_URL || !BACKEND_URL) {
+  throw new Error('❌ Frontend or Backend URL is missing in .env file');
+}
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -12,17 +18,26 @@ const DEFAULT_PAGE_TIMEOUT = 120000;
  * Login and capture authentication token
  */
 async function loginAndCaptureToken(page) {
+  const EMAIL = process.env.LOGIN_EMAIL;
+  const PASSWORD = process.env.LOGIN_PASSWORD;
+
+  if (!EMAIL || !PASSWORD) {
+    throw new Error('❌ LOGIN_EMAIL or LOGIN_PASSWORD is missing in .env file');
+  }
+
   let authToken = null;
+
   const tokenListener = (req) => {
     const headers = req.headers();
     if (headers['authorization']?.startsWith('Bearer')) {
       authToken = headers['authorization'];
     }
   };
+
   page.on('request', tokenListener);
 
-  await page.getByRole('textbox', { name: 'Enter your email' }).fill('Anurag.Gupta@enpointe.io');
-  await page.getByRole('textbox', { name: 'Enter your password' }).fill('Anurag@123');
+  await page.getByRole('textbox', { name: 'Enter your email' }).fill(EMAIL);
+  await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();
 
   if (authToken) {
@@ -31,11 +46,13 @@ async function loginAndCaptureToken(page) {
       localStorage.setItem('access_token', token.replace('Bearer ', ''));
       localStorage.setItem('authorization_token', token);
     }, [authToken]);
+
     await page.reload({ waitUntil: 'networkidle' });
   }
 
   page.off('request', tokenListener);
 }
+
 
 /**
  * Complete payment by filling card details
@@ -57,7 +74,7 @@ async function completePayment(page) {
  */
 async function getUserDetailsFromAPI(page) {
   const response = await page.waitForResponse(
-    res => res.url().includes('/api/user/user-details') && res.status() === 200,
+    res => res.url().includes(`${BACKEND_URL}/api/user/user-details`)&& res.status() === 200,
     { timeout: 30000 }
   );
   
@@ -148,7 +165,7 @@ async function selectGiftCard(page, price, currency = 'QAR') {
  */
 async function captureGiftCardAPI(page, apiPath = '/api/gifts-wallets/gift-card/buy') {
   const [response] = await Promise.all([
-    page.waitForResponse(res => res.url().includes(apiPath) && res.status() === 200),
+    page.waitForResponse(res => res.url().includes(`${BACKEND_URL}${apiPath}`) && res.status() === 200),
     page.getByRole('button', { name: 'Next' }).click()
   ]);
 
@@ -191,6 +208,7 @@ async function setupTest(page) {
 // ==================== EXPORTS ====================
 export {
   BASE_URL,
+  BACKEND_URL,
   TEST_CARD_NUMBER,
   DEFAULT_TIMEOUT,
   DEFAULT_PAGE_TIMEOUT,
