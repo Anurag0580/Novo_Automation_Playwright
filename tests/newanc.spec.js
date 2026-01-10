@@ -14,12 +14,19 @@ import {
   expandFaq
 } from './helpers/anciliarypages_helpers.js';
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
+if (!BASE_URL || !BACKEND_URL) {
+  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
+}
+
 test('TC_01 – Verify “About Us” Page Content, Images, External Links, and Language Switching Using Backend API Data', async ({ page }) => {
   test.setTimeout(180000);
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/about',
       country_id: 1,
@@ -27,7 +34,7 @@ test('TC_01 – Verify “About Us” Page Content, Images, External Links, and 
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -37,13 +44,13 @@ test('TC_01 – Verify “About Us” Page Content, Images, External Links, and 
   const en = apiData.page_json;
   const ar = apiData.page_json_ar;
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'About Us' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/about-us');
+    await page.goto(`${BASE_URL}/about-us`);
   }
   await waitForPageLoad(page);
 
@@ -139,7 +146,7 @@ test('TC_02 – Verify “Advertise With Us” Page Content, Feature Sections, F
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/advertise',
       country_id: 1,
@@ -147,7 +154,7 @@ test('TC_02 – Verify “Advertise With Us” Page Content, Feature Sections, F
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -163,13 +170,13 @@ test('TC_02 – Verify “Advertise With Us” Page Content, Feature Sections, F
     featureCount: en.featureArray?.length || 0
   });
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'Advertise With Us' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/advertise-with-us');
+    await page.goto(`${BASE_URL}/advertise-with-us`);
   }
 
   await waitForPageLoad(page);
@@ -306,7 +313,7 @@ test('TC_03 – Verify “Careers” Page Content, Email Links, Banner Images, a
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/career',
       country_id: 1,
@@ -314,7 +321,7 @@ test('TC_03 – Verify “Careers” Page Content, Email Links, Banner Images, a
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -330,13 +337,13 @@ test('TC_03 – Verify “Careers” Page Content, Email Links, Banner Images, a
     email: en.mail
   });
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'Careers' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/careers');
+    await page.goto(`${BASE_URL}/careers`);
   }
 
   await waitForPageLoad(page);
@@ -453,7 +460,7 @@ test('TC_04 – Verify “Privacy Policy” Page Content Sections, Links, Key Po
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/privacy',
       country_id: 1,
@@ -461,7 +468,7 @@ test('TC_04 – Verify “Privacy Policy” Page Content Sections, Links, Key Po
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -477,13 +484,13 @@ test('TC_04 – Verify “Privacy Policy” Page Content Sections, Links, Key Po
     arabicSections: ar.contentArray?.length || 0
   });
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'Privacy Policy' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/privacy-policy');
+    await page.goto(`${BASE_URL}/privacy-policy`);
   }
   await waitForPageLoad(page);
 
@@ -672,7 +679,7 @@ test('TC_05 – Verify “Terms and Conditions” Page Content Sections, Legal P
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/t&c',
       country_id: 1,
@@ -680,7 +687,7 @@ test('TC_05 – Verify “Terms and Conditions” Page Content Sections, Legal P
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -697,13 +704,13 @@ test('TC_05 – Verify “Terms and Conditions” Page Content Sections, Legal P
     arabicSections: ar.contentArray?.length || 0
   });
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'Terms And Conditions' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/terms-and-conditions');
+    await page.goto(`${BASE_URL}/terms-and-conditions`);
   }
   await waitForPageLoad(page);
 
@@ -908,7 +915,7 @@ test('TC_06 – Verify “FAQ” Page Categories, Search Functionality, Question
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/faq',
       country_id: 1,
@@ -916,7 +923,7 @@ test('TC_06 – Verify “FAQ” Page Categories, Search Functionality, Question
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -931,13 +938,13 @@ test('TC_06 – Verify “FAQ” Page Categories, Search Functionality, Question
     `✔ API Data fetched: ${en.faqQuestions.length} EN FAQs, ${ar.faqQuestions.length} AR FAQs`
   );
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: 'FAQs' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/faq');
+    await page.goto(`${BASE_URL}/faq`);
   }
 
   await waitForPageLoad(page);
@@ -1022,7 +1029,7 @@ test('TC_07 – Verify “Premiere Club” Page Tiers, Membership Sections, Imag
   page.setDefaultTimeout(15000);
 
   const API_CONFIG = {
-    baseUrl: 'https://backend.novocinemas.com/api/home/pages',
+    baseUrl: `${BACKEND_URL}/api/home/pages`,
     params: {
       key: '/clubs',
       country_id: 1,
@@ -1030,7 +1037,7 @@ test('TC_07 – Verify “Premiere Club” Page Tiers, Membership Sections, Imag
     },
     headers: {
       Accept: 'application/json, text/plain, */*',
-      Referer: 'https://qa.novocinemas.com/',
+      Referer: `${BASE_URL}/`,
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36'
     }
@@ -1043,13 +1050,13 @@ test('TC_07 – Verify “Premiere Club” Page Tiers, Membership Sections, Imag
 
   console.log(`✔ API Data fetched: ${en.faqCategories.length} tier categories, ${en.questions.length} questions`);
 
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
 
   try {
     await page.getByRole('link', { name: /premiere.*club/i }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/premiereclub');
+    await page.goto(`${BASE_URL}/premiereclub`);
   }
   await waitForPageLoad(page);
 
@@ -1270,15 +1277,15 @@ test('TC_07 – Verify “Premiere Club” Page Tiers, Membership Sections, Imag
 });
 
 test('TC_08 – Verify “Contact Us” Page Navigation and Accessibility from Footer', async ({ page }) => {
-  await page.goto('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
   await waitForPageLoad(page);
   
   try {
     await page.getByRole('link', { name: 'Contact Us' }).click();
   } catch {
-    await page.goto('https://qa.novocinemas.com/contact-us');
+    await page.goto(`${BASE_URL}/contact-us`);
   }
   await waitForPageLoad(page);
-  await page.goBack('https://qa.novocinemas.com/home');
+  await page.goto(`${BASE_URL}/home`);
 
 });

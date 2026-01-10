@@ -1,5 +1,12 @@
 import { expect } from '@playwright/test';
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
+if (!BASE_URL || !BACKEND_URL) {
+  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
+}
+
 /**
  * Wait for page to load completely
  */
@@ -73,7 +80,7 @@ const validateBannerImageBinding = async (locator, label) => {
   try {
     await expect(locator).toHaveAttribute(
       'src',
-      /gumlet\.io|backend\.novocinemas\.com|novo/i,
+      /gumlet\.io|novo/i,
       { timeout: 5000 }
     );
 
@@ -123,8 +130,8 @@ const extractEmailFromHtml = (html = '') => {
 const checkLoginStatus = async (page) => {
   try {
     const profileIcon = page.locator('svg[data-testid="profile-icon"], .lucide.lucide-user');
-    const isLoggedOut = await profileIcon.isVisible({ timeout: 3000 });
-    return !isLoggedOut;
+    const isLoggedIn = await profileIcon.isVisible({ timeout: 3000 });
+    return isLoggedIn;
   } catch {
     return false;
   }
