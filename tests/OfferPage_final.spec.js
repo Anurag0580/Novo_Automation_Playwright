@@ -11,6 +11,13 @@ import {
   verifyHoverDetails
 } from './helpers/Offers&Promotions_helpers.js';
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = `${process.env.PROD_BACKEND_URL}/api/home`;
+
+if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
+  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
+}
+
 
 // ==================== TEST FIXTURES ====================
 test.beforeEach(async ({ page }) => {
@@ -28,7 +35,7 @@ test.describe('Offers & Promotions Page', () => {
     await expect(page.locator('.relative > .absolute.inset-0').first()).toBeVisible();
     
     // Fetch and verify page heading
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const pageName = backendData?.pages?.data?.data?.[0]?.page_name || 
                      backendData?.pages?.data?.page_name || 
                      'Offers & Promotions';
@@ -48,7 +55,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_02 – Verify “All” Tab Displays All Available Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { all } = categorizeOffers(parseOffers(backendData));
     
     const allTab = page.getByRole('button', { name: 'All' });
@@ -60,7 +67,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_03 – Verify “Novo Offers & Promotions” Tab Displays Only Novo Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { normal, bin } = categorizeOffers(parseOffers(backendData));
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
@@ -72,7 +79,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_04 – Verify “Bank Offers & Promotions” Tab Displays Only Bank Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { normal, bin } = categorizeOffers(parseOffers(backendData));
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
@@ -84,7 +91,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_05 – Verify Offers Carousel Displays All Offers Through Slider Navigation', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { all } = categorizeOffers(parseOffers(backendData));
     
     await expect(page.locator('.bg-background.p-5.lg\\:p-10')).toBeVisible();
@@ -135,7 +142,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_06 – Verify Offer Hover Details Are Displayed Correctly in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { all } = categorizeOffers(parseOffers(backendData));
     
     const allTab = page.getByRole('button', { name: 'All' });
@@ -147,7 +154,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_07 – Verify Offer Hover Details Are Displayed Correctly in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { normal } = categorizeOffers(parseOffers(backendData));
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
@@ -159,7 +166,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_08 – Verify Offer Hover Details Are Displayed Correctly in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { bin } = categorizeOffers(parseOffers(backendData));
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
@@ -171,7 +178,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_09 – Verify “Learn More” Navigation from Offers in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { all } = categorizeOffers(parseOffers(backendData));
     
     const allTab = page.getByRole('button', { name: 'All' });
@@ -183,7 +190,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_10 – Verify “Learn More” Navigation from Offers in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { normal } = categorizeOffers(parseOffers(backendData));
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
@@ -195,7 +202,7 @@ test.describe('Offers & Promotions Page', () => {
 
   test('TC_11 – Verify “Learn More” Navigation from Offers in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData();
+    const backendData = await fetchOffersData(page);
     const { bin } = categorizeOffers(parseOffers(backendData));
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
