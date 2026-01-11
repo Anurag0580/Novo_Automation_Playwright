@@ -26,7 +26,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 // ==================== TEST SUITE ====================
-test.describe('Offers & Promotions Page', () => {
+test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Navigation Validation', () => {
   
   test('TC_01 – Verify Offers & Promotions Page Loads Successfully with Banner, Heading, Tabs, and Popular Bank Offers Section', async ({ page }) => {
     await navigateToOffers(page);

@@ -11,7 +11,7 @@ const Password = process.env.LOGIN_PASSWORD;
 const Phone = process.env.LOGIN_PHONE;
 
 
-test.describe('User Registration – Sign Up Flow', () => {
+test.describe('User Registration – Sign Up Flow and Validation Flows', () => {
 
   test.beforeEach(async ({ page }) => {
     // Mock OTP verification API
