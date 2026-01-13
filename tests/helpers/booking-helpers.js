@@ -1,5 +1,19 @@
 import { expect, request as playwrightRequest } from "@playwright/test";
 
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
+if (!BASE_URL || !BACKEND_URL) {
+  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
+}
+
+const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
+const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
+
+if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
+  throw new Error("❌ LOGIN_EMAIL or LOGIN_PASSWORD missing in env");
+}
+
 // ============================================================================
 // MOVIE SELECTION HELPERS
 // ============================================================================
@@ -7,7 +21,7 @@ import { expect, request as playwrightRequest } from "@playwright/test";
 export async function fetchMoviesFromAPI(request) {
   try {
     const response = await request.get(
-      "https://backend.novocinemas.com/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web"
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
     );
     if (!response.ok()) return [];
     const responseData = await response.json();
@@ -96,7 +110,7 @@ export async function getMovieDetails(page, request, selectedMovie) {
     throw new Error("Could not determine movieId or movieSlug");
 
   const apiResponse = await request.get(
-    `https://backend.novocinemas.com/api/home/movie-details/${movieId},${encodeURIComponent(
+    `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
     )}?country_id=1&channel=web`
   );
@@ -215,9 +229,9 @@ export async function verifyMovieDetailsPageLoyalty(page, movie) {
 
 export async function dynamicBooking(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId }) => {
+    async ({ movieId, BACKEND_URL }) => {
       const datesRes = await fetch(
-        `https://backend.novocinemas.com/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -226,7 +240,7 @@ export async function dynamicBooking(page, movieId) {
         dates.find((date) => new Date(date).getDay() === 3) || dates[0];
 
       const sessionsRes = await fetch(
-        `https://backend.novocinemas.com/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
       );
       const sessionsData = await sessionsRes.json();
       const sessions = sessionsData.data.sessions[selectedDate];
@@ -256,7 +270,7 @@ export async function dynamicBooking(page, movieId) {
         experienceName: twoDExperienceName,
       };
     },
-    { movieId }
+    { movieId, BACKEND_URL }
   );
 
   const selectedDate = new Date(bookingData.selectedDate);
@@ -276,61 +290,10 @@ export async function dynamicBooking(page, movieId) {
 }
 
 export async function dynamicBookingLoyalty(page, movieId) {
-  const bookingData = await page.evaluate(async ({ movieId }) => {
-    const datesRes = await fetch(
-      `https://backend.novocinemas.com/api/home/available-dates/${movieId}/?country_id=1&channel=web`
-    );
-    const datesData = await datesRes.json();
-    const dates = datesData.data.available_dates;
-    
-    let selectedDate = dates.find(date => new Date(date).getDay() === 3) || dates[0];
-    if (!dates.find(date => new Date(date).getDay() === 3)) {
-      console.warn('No Wednesday found in available dates, using first available date');
-    }
-
-    const sessionsRes = await fetch(
-      `https://backend.novocinemas.com/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
-    );
-    const sessionsData = await sessionsRes.json();
-    const sessions = sessionsData.data.sessions[selectedDate];
-    const firstSession = Object.values(sessions)[0][0];
-
-    return {
-      selectedDate,
-      showTime: firstSession.show_time,
-      sessionId: firstSession.session_id,
-      cinemaId: firstSession.cinema_id ?? null,
-      debugSession: firstSession
-    };
-  }, { movieId });
-
-  console.log('Debug Session Object:', bookingData.debugSession);
-
-  const selectedDate = new Date(bookingData.selectedDate);
-  const today = new Date();
-  
-  let formattedDate;
-  if (selectedDate.toDateString() === today.toDateString()) {
-    formattedDate = 'Today';
-  } else if (selectedDate.getDay() === 3) {
-    formattedDate = `Wed${selectedDate.getDate()}/`;
-  } else {
-    formattedDate = `${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][selectedDate.getDay()]}${selectedDate.getDate()}/`;
-  }
-
-  console.log('Selected date:', bookingData.selectedDate, 'Formatted:', formattedDate, 'Is Wednesday?', selectedDate.getDay() === 3);
-
-  await page.getByText(formattedDate).click();
-  await page.getByText(bookingData.showTime).first().click();
-  return bookingData;
-}
-
-
-export async function dynamicBookingBankOffer(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId }) => {
+    async ({ movieId, BACKEND_URL }) => {
       const datesRes = await fetch(
-        `https://backend.novocinemas.com/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -344,7 +307,72 @@ export async function dynamicBookingBankOffer(page, movieId) {
       }
 
       const sessionsRes = await fetch(
-        `https://backend.novocinemas.com/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+      );
+      const sessionsData = await sessionsRes.json();
+      const sessions = sessionsData.data.sessions[selectedDate];
+      const firstSession = Object.values(sessions)[0][0];
+
+      return {
+        selectedDate,
+        showTime: firstSession.show_time,
+        sessionId: firstSession.session_id,
+        cinemaId: firstSession.cinema_id ?? null,
+        debugSession: firstSession,
+      };
+    },
+    { movieId, BACKEND_URL }
+  );
+
+  console.log("Debug Session Object:", bookingData.debugSession);
+
+  const selectedDate = new Date(bookingData.selectedDate);
+  const today = new Date();
+
+  let formattedDate;
+  if (selectedDate.toDateString() === today.toDateString()) {
+    formattedDate = "Today";
+  } else if (selectedDate.getDay() === 3) {
+    formattedDate = `Wed${selectedDate.getDate()}/`;
+  } else {
+    formattedDate = `${
+      ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][selectedDate.getDay()]
+    }${selectedDate.getDate()}/`;
+  }
+
+  console.log(
+    "Selected date:",
+    bookingData.selectedDate,
+    "Formatted:",
+    formattedDate,
+    "Is Wednesday?",
+    selectedDate.getDay() === 3
+  );
+
+  await page.getByText(formattedDate).click();
+  await page.getByText(bookingData.showTime).first().click();
+  return bookingData;
+}
+
+export async function dynamicBookingBankOffer(page, movieId) {
+  const bookingData = await page.evaluate(
+    async ({ movieId, BACKEND_URL }) => {
+      const datesRes = await fetch(
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+      );
+      const datesData = await datesRes.json();
+      const dates = datesData.data.available_dates;
+
+      let selectedDate =
+        dates.find((date) => new Date(date).getDay() === 3) || dates[0];
+      if (!dates.find((date) => new Date(date).getDay() === 3)) {
+        console.warn(
+          "No Wednesday found in available dates, using first available date"
+        );
+      }
+
+      const sessionsRes = await fetch(
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
       );
       const sessionsData = await sessionsRes.json();
 
@@ -360,7 +388,7 @@ export async function dynamicBookingBankOffer(page, movieId) {
         debugSession: firstSession,
       };
     },
-    { movieId }
+    { movieId, BACKEND_URL }
   );
 
   console.log("Debug Session Object:", bookingData.debugSession);
@@ -407,21 +435,23 @@ export async function loginAndCaptureTokenBooking(page) {
   page.on("request", tokenListener);
 
   // --- Login ---
-  await page.getByRole("textbox", { name: "Enter your email" })
-    .fill("Anurag.Gupta@enpointe.io");
+  await page
+    .getByRole("textbox", { name: "Enter your email" })
+    .fill(LOGIN_EMAIL);
 
-  await page.getByRole("textbox", { name: "Enter your password" })
-    .fill("Anurag@123");
+  await page
+    .getByRole("textbox", { name: "Enter your password" })
+    .fill(LOGIN_PASSWORD);
 
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white"))
-    .toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
+    timeout: 15000,
+  });
 
   // Wait until token is captured
-  await expect.poll(() => authToken, { timeout: 10000 })
-    .toBeTruthy();
+  await expect.poll(() => authToken, { timeout: 10000 }).toBeTruthy();
 
   page.off("request", tokenListener);
 
@@ -434,8 +464,9 @@ export async function loginAndCaptureTokenBooking(page) {
   }, authToken);
 
   // 🔐 MANDATORY Confirm popup
-  await expect(page.getByRole("button", { name: "Confirm" }))
-    .toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible({
+    timeout: 10000,
+  });
 
   await page.getByRole("button", { name: "Confirm" }).click();
 
@@ -444,7 +475,6 @@ export async function loginAndCaptureTokenBooking(page) {
 
   return authToken;
 }
-
 
 export async function loginAndCaptureTokenLoyalty(page) {
   let authToken = null;
@@ -470,10 +500,10 @@ export async function loginAndCaptureTokenLoyalty(page) {
   // ✅ Login
   await page
     .getByRole("textbox", { name: "Enter your email" })
-    .fill("Anurag.Gupta@enpointe.io");
+    .fill(LOGIN_EMAIL);
   await page
     .getByRole("textbox", { name: "Enter your password" })
-    .fill("Anurag@123");
+    .fill(LOGIN_PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Wait for user-details API to complete
@@ -510,14 +540,14 @@ export async function loginAndCaptureTokenLoyalty(page) {
   // ✅ Continue with API validation (only after session is properly set)
   if (authToken) {
     const apiContext = await playwrightRequest.newContext({
-      baseURL: "https://backend.novocinemas.com",
+      baseURL: BACKEND_URL,
       extraHTTPHeaders: {
         authorization: authToken,
         accept: "application/json, text/plain, */*",
         "content-type": "application/json",
         "accept-language": "en-GB,en;q=0.9",
-        origin: "https://qa.novocinemas.com",
-        referer: "https://qa.novocinemas.com/",
+        origin: BASE_URL,
+        referer: `${BASE_URL}/`,
       },
     });
 
@@ -594,7 +624,7 @@ export async function sidePanelVerification(
   cinemaId
 ) {
   const sidePanelApi = await request.get(
-    `https://backend.novocinemas.com/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -618,7 +648,7 @@ export async function sidePanelVerification(
 
 export async function verifySidePanel(page, request, sessionId, cinemaId) {
   const sidePanelApi = await request.get(
-    `https://backend.novocinemas.com/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -650,7 +680,7 @@ export async function verifySidePanel(page, request, sessionId, cinemaId) {
 
 export async function getSeatLayout(page, request, sessionId, cinemaId) {
   const seatLayoutResponse = await request.get(
-    `https://backend.novocinemas.com/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -676,7 +706,7 @@ export async function selectSeats(
   seatCount = 1
 ) {
   const seatLayoutResponse = await request.get(
-    `https://backend.novocinemas.com/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -1172,7 +1202,7 @@ export async function completePaymentWithGiftCard(
 
   // 2️⃣ Fetch gift cards from API
   const giftCardResponse = await request.get(
-    "https://backend.novocinemas.com/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web",
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1189,15 +1219,12 @@ export async function completePaymentWithGiftCard(
 
   const giftCardJson = await giftCardResponse.json();
 
-  const allGiftCards = [
-    ...(giftCardJson.data?.sent || []),
-    ...(giftCardJson.data?.received || []),
-  ];
+  const receivedGiftCards = giftCardJson.data?.received || [];
 
-  expect(allGiftCards.length).toBeGreaterThan(0);
+  expect(receivedGiftCards.length).toBeGreaterThan(0);
 
   // 3️⃣ Pick gift card with sufficient balance
-  const selectedCard = allGiftCards.find(
+  const selectedCard = receivedGiftCards.find(
     (card) => card.balance_in_cents / 100 >= requiredAmountQAR
   );
 
@@ -1298,7 +1325,7 @@ export async function applyAndRemoveGiftCardPayment(
 
   // ------------------ Fetch gift cards (API) ------------------
   const giftCardResponse = await request.get(
-    "https://backend.novocinemas.com/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web",
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1315,15 +1342,12 @@ export async function applyAndRemoveGiftCardPayment(
 
   const giftCardJson = await giftCardResponse.json();
 
-  const allGiftCards = [
-    ...(giftCardJson.data?.sent || []),
-    ...(giftCardJson.data?.received || []),
-  ];
+  const receivedGiftCards = giftCardJson.data?.received || [];
 
-  expect(allGiftCards.length).toBeGreaterThan(0);
+  expect(receivedGiftCards.length).toBeGreaterThan(0);
 
   // ------------------ Pick card with sufficient balance ------------------
-  const selectedCard = allGiftCards.find(
+  const selectedCard = receivedGiftCards.find(
     (card) => card.balance_in_cents / 100 >= requiredAmountQAR
   );
 
@@ -1447,7 +1471,7 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
 
   // ------------------ Fetch gift cards ------------------
   const giftCardResponse = await request.get(
-    "https://backend.novocinemas.com/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web",
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1462,15 +1486,12 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
 
   const giftCardJson = await giftCardResponse.json();
 
-  const allGiftCards = [
-    ...(giftCardJson.data?.sent || []),
-    ...(giftCardJson.data?.received || []),
-  ];
+  const receivedGiftCards = giftCardJson.data?.received || [];
 
-  expect(allGiftCards.length).toBeGreaterThan(0);
+  expect(receivedGiftCards.length).toBeGreaterThan(0);
 
   // ------------------ Eligible cards: balance < total ------------------
-  const eligibleCards = allGiftCards
+  const eligibleCards = receivedGiftCards
     .filter((card) => card.balance_in_cents / 100 < totalPriceQAR)
     .sort((a, b) => b.balance_in_cents - a.balance_in_cents);
 
@@ -1547,7 +1568,6 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
   await expect(appliedButton).toBeVisible();
   await expect(appliedButton).toBeDisabled();
 
-
   // ------------------ Switch to Credit Card ------------------
   const creditCardOption = page
     .locator("div")
@@ -1563,32 +1583,31 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
   };
 }
 
-
 export async function applyNovoWalletOnly(
   page,
   request,
   authToken,
   requiredAmountQAR
 ) {
-  console.log('\n=== Novo Wallet Apply Flow ===');
+  console.log("\n=== Novo Wallet Apply Flow ===");
 
   // ------------------ Defensive checks ------------------
-  if (!authToken || typeof authToken !== 'string') {
-    throw new Error('Invalid authToken passed');
+  if (!authToken || typeof authToken !== "string") {
+    throw new Error("Invalid authToken passed");
   }
 
-  if (typeof requiredAmountQAR !== 'number') {
-    throw new Error('requiredAmountQAR must be a number');
+  if (typeof requiredAmountQAR !== "number") {
+    throw new Error("requiredAmountQAR must be a number");
   }
 
   // ------------------ 1️⃣ CHECK WALLET BALANCE (API) ------------------
   const checkBalanceResponse = await request.get(
-    'https://backend.novocinemas.com/api/gifts-wallets/wallet/check-balance?country_id=1&channel=web',
+    `${BACKEND_URL}/api/gifts-wallets/wallet/check-balance?country_id=1&channel=web`,
     {
       headers: {
         Authorization: authToken,
-        Accept: 'application/json, text/plain, */*'
-      }
+        Accept: "application/json, text/plain, */*",
+      },
     }
   );
 
@@ -1597,24 +1616,23 @@ export async function applyNovoWalletOnly(
   const checkBalanceJson = await checkBalanceResponse.json();
   expect(checkBalanceJson.success).toBe(true);
 
-  const walletBalanceFromApiQAR =
-    checkBalanceJson.data.balance_amount / 100;
+  const walletBalanceFromApiQAR = checkBalanceJson.data.balance_amount / 100;
 
   console.log(`💼 Wallet Balance (API): QAR ${walletBalanceFromApiQAR}`);
 
   // ------------------ 2️⃣ VERIFY WALLET BALANCE IN UI ------------------
-  const walletLabel = page.getByText('Novo Wallet Balance:', { exact: false });
+  const walletLabel = page.getByText("Novo Wallet Balance:", { exact: false });
   await expect(walletLabel).toBeVisible({ timeout: 10000 });
 
-  const walletBalanceText = walletLabel.locator('span');
+  const walletBalanceText = walletLabel.locator("span");
   const walletBalanceUiText = (await walletBalanceText.textContent())?.trim();
 
   if (!walletBalanceUiText) {
-    throw new Error('Unable to read Novo Wallet balance from UI');
+    throw new Error("Unable to read Novo Wallet balance from UI");
   }
 
   const walletBalanceFromUiQAR = parseFloat(
-    walletBalanceUiText.replace('QAR', '').trim()
+    walletBalanceUiText.replace("QAR", "").trim()
   );
 
   console.log(`💼 Wallet Balance (UI): QAR ${walletBalanceFromUiQAR}`);
@@ -1624,24 +1642,24 @@ export async function applyNovoWalletOnly(
 
   // ------------------ 3️⃣ ZERO BALANCE HANDLING ------------------
   if (walletBalanceFromApiQAR <= 0) {
-    console.warn('⚠️ Novo Wallet balance is 0 — skipping wallet apply');
+    console.warn("⚠️ Novo Wallet balance is 0 — skipping wallet apply");
     return {
       walletBalanceQAR: walletBalanceFromApiQAR,
       appliedAmountQAR: 0,
       remainingAmountQAR: requiredAmountQAR,
-      skipped: true
+      skipped: true,
     };
   }
 
   // ------------------ 4️⃣ LOCATE WALLET TOGGLE ------------------
-  const walletToggle = page.locator('.rounded-full.w-9').first();
+  const walletToggle = page.locator(".rounded-full.w-9").first();
   await expect(walletToggle).toBeVisible({ timeout: 5000 });
 
   // ------------------ 5️⃣ APPLY WALLET ------------------
   const applyWalletResponsePromise = page.waitForResponse(
-    res =>
-      res.url().includes('/api/gifts-wallets/wallet/apply') &&
-      res.request().method() === 'POST' &&
+    (res) =>
+      res.url().includes("/api/gifts-wallets/wallet/apply") &&
+      res.request().method() === "POST" &&
       res.status() === 200
   );
 
@@ -1653,10 +1671,7 @@ export async function applyNovoWalletOnly(
   expect(applyJson.success).toBe(true);
 
   const appliedAmountQAR = applyJson.data.total_discount / 100;
-  const remainingAmountQAR = Math.max(
-    requiredAmountQAR - appliedAmountQAR,
-    0
-  );
+  const remainingAmountQAR = Math.max(requiredAmountQAR - appliedAmountQAR, 0);
 
   console.log(`✅ Novo Wallet Applied: QAR ${appliedAmountQAR}`);
   console.log(`💰 Remaining Amount: QAR ${remainingAmountQAR}`);
@@ -1665,10 +1680,9 @@ export async function applyNovoWalletOnly(
     walletBalanceQAR: walletBalanceFromApiQAR,
     appliedAmountQAR,
     remainingAmountQAR,
-    skipped: false
+    skipped: false,
   };
 }
-
 
 // ============================================================================
 // F&B (FOOD & BEVERAGES) HELPERS
@@ -1809,7 +1823,7 @@ export async function setupTest(page, request) {
   // Set a reasonable default timeout for page operations
   page.setDefaultTimeout(120000); // 2 minutes
 
-  await page.goto("https://qa.novocinemas.com/home", {
+  await page.goto(`${BASE_URL}/home`, {
     waitUntil: "domcontentloaded",
   });
   await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
@@ -1863,7 +1877,7 @@ export async function setupTest(page, request) {
     throw new Error("Could not determine movieId or movieSlug");
 
   const apiResponse = await request.get(
-    `https://backend.novocinemas.com/api/home/movie-details/${movieId},${encodeURIComponent(
+    `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
     )}?country_id=1&channel=web`
   );
@@ -1875,7 +1889,7 @@ export async function setupTest(page, request) {
 
   // Login
   const { tokenListener, getToken } = setupAuthTokenCapture(page);
-  await login(page, "Anurag.Gupta@enpointe.io", "Anurag@123");
+  await login(page, LOGIN_EMAIL, LOGIN_PASSWORD);
 
   const authToken = getToken();
   await injectAuthToken(page, authToken);
