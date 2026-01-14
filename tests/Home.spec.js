@@ -222,7 +222,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         timeout: 60000,
       });
     } catch (error) {
-      await page.goto(`${REAL_DOMAIN_URL}/home`, {
+      await page.goto(`${BASE_URL}/home`, {
         waitUntil: "domcontentloaded",
         timeout: 60000,
       });
@@ -321,7 +321,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         }
 
         await page.waitForTimeout(3000);
-        await page.goBack().catch(() => page.goto(`${REAL_DOMAIN_URL}/home`));
+        await page.goBack().catch(() => page.goto(`${BASE_URL}/home`));
         await page.waitForTimeout(2000);
       }
     });
