@@ -16,7 +16,14 @@ import {
   bringOfferIntoView,
   clickOfferAndWaitForNavigation,
   testOffersInLanguage,
+  openQuickBook,
+  fetchQuickBookData,
+  formatDateForUI,
+  waitForQuickBookApi,
+  clickAndSelectOption,
+  getDropdownLocators,
 } from "./helpers/home_helpers.js";
+import { loginAndCaptureTokenBooking } from "./helpers/booking-helpers.js";
 
 const BASE_URL = process.env.PROD_FRONTEND_URL;
 const BACKEND_URL = process.env.PROD_BACKEND_URL;
@@ -1184,5 +1191,200 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.getByRole("link", { name: "Contact Us" }).click();
     await page.waitForTimeout(1000);
     await page.goto(`${BASE_URL}/home`);
+  });
+});
+
+// ================= Quick Book Tests =================
+test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenarios)", () => {
+  const DEFAULT_TIMEOUT = 15000;
+
+  // ============== Test Setup ==============
+  test.beforeEach(async ({ page }) => {
+    await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(2000);
+  });
+
+  // ============== Test Cases ==============
+
+  test("TC_QB_01 - Verify user can complete Quick Book flow using dynamic API data and proceed to Seat Selection", async ({ page, request }) => {
+    console.log("\n\n========== TEST: TC_QB_01 START ==========");
+    await openQuickBook(page);
+
+    const dropdowns = getDropdownLocators(page);
+    await expect(dropdowns.movie).toBeVisible({ timeout: DEFAULT_TIMEOUT });
+    console.log("✅ Dropdowns loaded");
+
+    // Fetch base data
+    console.log("📋 Fetching base data for Quick Book...");
+    const baseData = await fetchQuickBookData(request, { country_id: 1, channel: "web" });
+
+    const selectedMovie = baseData.movies?.[0];
+    const selectedCinema = baseData.cinemas?.[0];
+    const selectedExperience = baseData.experiences?.[0];
+    console.log("🎬 Selected Movie:", selectedMovie?.movie_title);
+    console.log("🏢 Selected Cinema:", selectedCinema?.name);
+    console.log("🎭 Selected Experience:", selectedExperience?.experience_name);
+
+    expect(selectedMovie).toBeTruthy();
+    expect(selectedCinema).toBeTruthy();
+    expect(selectedExperience).toBeTruthy();
+
+    // Select Movie, Cinema, Experience (API wait needed)
+    console.log("\n📌 Selecting Movie, Cinema, and Experience...");
+    await clickAndSelectOption(page, dropdowns.movie, selectedMovie.movie_title, true);
+    await clickAndSelectOption(page, dropdowns.cinema, selectedCinema.name, true);
+    await clickAndSelectOption(page, dropdowns.experience, selectedExperience.experience_name, true);
+    console.log("✅ Movie, Cinema, and Experience selected");
+
+    // Find first date with available sessions
+    console.log("\n📅 Looking for available dates and sessions...");
+    const datesToTry = baseData.dates || [];
+    expect(datesToTry.length).toBeGreaterThan(0);
+    console.log(`Found ${datesToTry.length} available dates`);
+
+    let finalShowtimeText = null;
+
+    for (const date of datesToTry) {
+      const uiDate = formatDateForUI(date);
+      console.log(`\n🔍 Checking date: ${uiDate}`);
+      await clickAndSelectOption(page, dropdowns.date, uiDate, true);
+
+      // Fetch sessions for selected date
+      console.log(`🔡 Fetching sessions for date: ${date}`);
+      const sessionData = await fetchQuickBookData(request, {
+        country_id: 1,
+        channel: "web",
+        movie_id: selectedMovie.movie_id,
+        cinema_id: selectedCinema.id,
+        experience_id: selectedExperience.experience_id,
+        date,
+      });
+
+      const sessionsForDate = sessionData.sessions?.[date];
+
+      if (Array.isArray(sessionsForDate) && sessionsForDate.length > 0) {
+        const firstEnabledSession =
+          sessionsForDate.find((s) => s.sessionDisabled === false) || sessionsForDate[0];
+        finalShowtimeText = firstEnabledSession.show_time;
+        console.log(`⏰ Found showtime: ${finalShowtimeText}`);
+        break;
+      } else {
+        console.log("❌ No sessions available for this date");
+      }
+    }
+
+    if (!finalShowtimeText) {
+      test.skip(true, "No available sessions found for any date in quick book API");
+    }
+
+    // Select Showtime (NO API wait)
+    console.log("\n⏱️ Selecting showtime (NO API wait)...");
+    await clickAndSelectOption(page, dropdowns.showtime, finalShowtimeText, false);
+
+    // Click Book and verify navigation
+    console.log("\n📌 Clicking Book button...");
+    const bookBtn = page.getByRole("button", { name: "Book", exact: true });
+    await expect(bookBtn).toBeEnabled({ timeout: DEFAULT_TIMEOUT });
+    console.log("✅ Book button is enabled, clicking...");
+    await bookBtn.click();
+
+    await loginAndCaptureTokenBooking(page);
+    await page.waitForLoadState("networkidle");
+    await expect(page.url()).toContain("/seat-selection/");
+    console.log("✅ Successfully navigated to seat selection page");
+    console.log("========== TEST: TC_QB_01 PASSED ==========\n");
+  });
+
+  test("TC_QB_NEG_01 - Verify Book button remains disabled until all mandatory Quick Book selections are completed", async ({ page }) => {
+    console.log("\n\n========== TEST: TC_QB_NEG_01 START ==========");
+    await openQuickBook(page);
+
+    const dropdowns = getDropdownLocators(page);
+    const bookBtn = page.getByRole("button", { name: "Book", exact: true });
+    console.log("✅ Quick Book dialog opened");
+
+    // Verify Book button is initially blocked
+    console.log("\n🚫 Verifying Book button is initially blocked...");
+    await expect(bookBtn).toHaveClass(/cursor-not-allowed/);
+    console.log("✅ Book button is blocked (as expected)");
+    await bookBtn.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await bookBtn.click({ force: true });
+    await expect(page.url()).toContain("/home");
+    console.log("✅ Book button click had no effect (still on home page)");
+
+    // Test progressive selection - Book should remain blocked
+    const selectionsToTest = [
+      { dropdown: dropdowns.movie, name: "Movie" },
+      { dropdown: dropdowns.cinema, name: "Cinema" },
+      { dropdown: dropdowns.experience, name: "Experience" },
+      { dropdown: dropdowns.date, name: "Date" },
+    ];
+
+    for (const selection of selectionsToTest) {
+      console.log(`\n📌 Testing ${selection.name} selection...`);
+      await selection.dropdown.click();
+      await page.getByRole("option").first().click();
+      console.log(`✅ ${selection.name} selected, verifying Book button is still blocked...`);
+      await expect(bookBtn).toHaveClass(/cursor-not-allowed/);
+      console.log(`✅ Book button still blocked after ${selection.name} selection`);
+    }
+
+    // Select Showtime - Book should become clickable
+    console.log("\n⏰ Testing Showtime selection...");
+    await dropdowns.showtime.click();
+    await page.getByRole("option").first().click();
+    console.log("✅ Showtime selected, verifying Book button is now enabled...");
+    await expect(bookBtn).not.toHaveClass(/cursor-not-allowed/);
+    console.log("✅ Book button is now enabled (as expected)");
+    console.log("========== TEST: TC_QB_NEG_01 PASSED ==========\n");
+  });
+
+  test("TC_QB_NEG_02 - Verify Showtime dropdown is disabled until Movie, Cinema, Experience, and Date are selected", async ({ page }) => {
+    console.log("\n\n========== TEST: TC_QB_NEG_02 START ==========");
+    await openQuickBook(page);
+
+    const dropdowns = getDropdownLocators(page);
+    console.log("✅ Quick Book dialog opened");
+
+    // Helper to verify showtime is blocked
+    const verifyShowtimeBlocked = async () => {
+      console.log("🔍 Checking if Showtime dropdown is blocked...");
+      await dropdowns.showtime.scrollIntoViewIfNeeded();
+      await dropdowns.showtime.click({ force: true });
+      await expect(page.getByRole("option")).toHaveCount(0);
+      console.log("✅ Showtime dropdown is blocked (no options available)");
+    };
+
+    // Initially showtime should be blocked
+    console.log("\n🚫 Verifying Showtime is initially blocked...");
+    await verifyShowtimeBlocked();
+
+    // Test each selection - showtime should remain blocked
+    console.log("\n📌 Testing selections before enabling Showtime...");
+    const selectionsBeforeShowtime = [
+      { dropdown: dropdowns.movie, name: "Movie" },
+      { dropdown: dropdowns.cinema, name: "Cinema" },
+      { dropdown: dropdowns.experience, name: "Experience" },
+    ];
+
+    for (const selection of selectionsBeforeShowtime) {
+      console.log(`\n📌 Testing ${selection.name} selection...`);
+      await selection.dropdown.click();
+      await page.getByRole("option").first().click();
+      await verifyShowtimeBlocked();
+    }
+
+    // Select Date - showtime should now be accessible
+    console.log("\n📅 Selecting Date to enable Showtime...");
+    await dropdowns.date.click();
+    await page.getByRole("option").first().click();
+
+    console.log("\n✅ Verifying Showtime is now accessible...");
+    await dropdowns.showtime.scrollIntoViewIfNeeded();
+    await dropdowns.showtime.click({ force: true });
+    await expect(page.getByRole("option").first()).toBeVisible();
+    console.log("✅ Showtime dropdown is now enabled with options available");
+    console.log("========== TEST: TC_QB_NEG_02 PASSED ==========\n");
   });
 });

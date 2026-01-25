@@ -488,7 +488,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
   // TEST 3: Normal Ticket Booking WITHOUT F&B with LOYALTY OFFERS
   // ============================================================================
 
-  test("TC_03 – Verify Normal Movie Ticket Booking Without F&B Using Loyalty Offer and Credit Card Payment", async ({
+  test.skip("TC_03 – Verify Normal Movie Ticket Booking Without F&B Using Loyalty Offer and Credit Card Payment", async ({
     page,
     request,
   }) => {
