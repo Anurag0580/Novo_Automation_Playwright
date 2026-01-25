@@ -7,6 +7,7 @@ const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
   throw new Error('❌ Required URLs missing in .env');
 }
+const DEFAULT_TIMEOUT = 15000;
 
 // ==================== CONFIGURATION ====================
 
@@ -361,4 +362,80 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
 });
     await waitForOffersCarouselReady(page);
   }
+}
+
+// ==================== QUICK BOOK HELPERS ====================
+// ============== API Helpers ==============
+export async function fetchQuickBookData(request, params = {}) {
+  const url = new URL("https://backend.novocinemas.com/api/home/dynamic-quick-book/v2");
+  console.log("🔡 Fetching Quick Book API with params:", params);
+  
+  url.searchParams.set("country_id", String(params.country_id ?? 1));
+  url.searchParams.set("channel", params.channel ?? "web");
+  
+  if (params.movie_id) url.searchParams.set("movie_id", String(params.movie_id));
+  if (params.cinema_id) url.searchParams.set("cinema_id", String(params.cinema_id));
+  if (params.experience_id) url.searchParams.set("experience_id", String(params.experience_id));
+  if (params.date) url.searchParams.set("date", String(params.date));
+
+  const res = await request.get(url.toString(), {
+    headers: {
+      Accept: "application/json, text/plain, */*",
+      Referer: "https://qa.novocinemas.com/",
+    },
+  });
+
+  expect(res.ok()).toBeTruthy();
+  const json = await res.json();
+  expect(json?.success).toBeTruthy();
+  console.log("✅ API Response received successfully");
+
+  return json.data;
+}
+
+// ============== UI Helpers ==============
+export function formatDateForUI(isoDate) {
+  const d = new Date(isoDate);
+  const weekday = d.toLocaleDateString("en-US", { weekday: "short" });
+  const month = d.toLocaleDateString("en-US", { month: "short" });
+  const day = d.toLocaleDateString("en-US", { day: "2-digit" });
+  return `${weekday}, ${month} ${day},`;
+}
+
+export async function waitForQuickBookApi(page) {
+  console.log("⏳ Waiting for Quick Book API response...");
+  await page.waitForResponse(
+    (res) => res.url().includes("/api/home/dynamic-quick-book/v2") && res.status() === 200,
+    { timeout: DEFAULT_TIMEOUT }
+  );
+  console.log("✅ Quick Book API response received");
+}
+
+export async function clickAndSelectOption(page, dropdownLocator, optionText, shouldWaitApi = true) {
+  console.log(`🔍 Selecting option: "${optionText}" (API wait: ${shouldWaitApi})`);
+  await expect(dropdownLocator).toBeVisible({ timeout: DEFAULT_TIMEOUT });
+  await dropdownLocator.click();
+  await page.getByRole("option", { name: optionText }).click();
+  console.log(`✅ Option "${optionText}" selected`);
+  
+  if (shouldWaitApi) {
+    await waitForQuickBookApi(page);
+  }
+}
+
+export async function openQuickBook(page) {
+  console.log("🚀 Opening Quick Book dialog...");
+  const quickBookBtn = page.getByText("Quick Book").first();
+  await quickBookBtn.click({ force: true });
+  console.log("✅ Quick Book dialog opened");
+}
+
+export function getDropdownLocators(page) {
+  return {
+    movie: page.locator("div").filter({ hasText: /^Movie$/ }).nth(1),
+    cinema: page.locator("div").filter({ hasText: /^Cinema$/ }).nth(1),
+    experience: page.locator("div").filter({ hasText: /^Experience$/ }).nth(1),
+    date: page.locator("div").filter({ hasText: /^Date$/ }).nth(1),
+    showtime: page.locator("div").filter({ hasText: /^Showtime$/ }).nth(1),
+  };
 }

@@ -23,7 +23,7 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.PROD_FRONTEND_URL,
-    viewport: { width: 1600, height: 900 },
+    viewport: { width: 1920, height: 1080 },
     actionTimeout: 15000,
     navigationTimeout: 30000,
     screenshot: 'only-on-failure',
