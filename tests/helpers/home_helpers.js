@@ -413,15 +413,28 @@ export async function waitForQuickBookApi(page) {
 
 export async function clickAndSelectOption(page, dropdownLocator, optionText, shouldWaitApi = true) {
   console.log(`🔍 Selecting option: "${optionText}" (API wait: ${shouldWaitApi})`);
+
   await expect(dropdownLocator).toBeVisible({ timeout: DEFAULT_TIMEOUT });
   await dropdownLocator.click();
-  await page.getByRole("option", { name: optionText }).click();
+
+  const exactOption = page.getByRole("option", { name: optionText, exact: true });
+
+  if (await exactOption.count()) {
+    await exactOption.first().click();
+  } else {
+    const partialOption = page.getByRole("option").filter({ hasText: optionText }).first();
+    await expect(partialOption).toBeVisible({ timeout: DEFAULT_TIMEOUT });
+    await partialOption.scrollIntoViewIfNeeded();
+    await partialOption.click();
+  }
+
   console.log(`✅ Option "${optionText}" selected`);
-  
+
   if (shouldWaitApi) {
     await waitForQuickBookApi(page);
   }
 }
+
 
 export async function openQuickBook(page) {
   console.log("🚀 Opening Quick Book dialog...");

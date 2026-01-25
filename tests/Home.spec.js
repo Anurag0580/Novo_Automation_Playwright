@@ -1093,7 +1093,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       },
       {
         selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
-        expectedUrl: "https://www.instagram.com/novocinemas_qtr/",
+        expectedUrl: "https://www.instagram.com/novocinemas_qtr",
       },
       {
         selector: ".flex.gap-x-2 > a:nth-child(4)",
