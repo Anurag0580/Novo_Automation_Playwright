@@ -63,9 +63,6 @@ export async function selectMovieDynamically(page, request) {
     await anyCard.scrollIntoViewIfNeeded();
     await anyCard.click();
   }
-
-  await page.waitForLoadState("networkidle");
-  await page.waitForTimeout(9000);
   return selectedMovie;
 }
 
@@ -138,6 +135,7 @@ export async function extractMovieDetails(page, selectedMovie) {
 }
 
 export async function verifyMovieDetailsPage(page, movie) {
+  await expect(page).toHaveURL(/\/movies\/\d+\/?/);
   await expect(
     page.getByRole("heading", { name: movie.movie_title })
   ).toBeVisible();
@@ -469,9 +467,6 @@ export async function loginAndCaptureTokenBooking(page) {
   });
 
   await page.getByRole("button", { name: "Confirm" }).click();
-
-  // Allow booking flow to stabilize (reload/navigation happens here)
-  await page.waitForLoadState("networkidle");
 
   return authToken;
 }
@@ -1051,15 +1046,20 @@ export async function completePayment(page) {
 
     await page.getByRole("button", { name: "Use a Different Card" }).click();
 
-    const cardNumberFrame = page.frameLocator("#cardNumber-iframe");
-    await cardNumberFrame.locator("input").fill("4111111111111111");
+    const cardNumberFrame = page
+  .frameLocator('iframe[name="cardNumber-input"]')
+  .first();
+await cardNumberFrame.locator("input").fill("4111111111111111");
 
-    const expiryDateFrame = page.frameLocator("#expiryDate-iframe");
-    await expiryDateFrame.locator("input").fill("12/28");
+const expiryDateFrame = page
+  .frameLocator('iframe[name="expiryDate-input"]')
+  .first();
+await expiryDateFrame.locator("input").fill("12/28");
 
-    const cvvFrame = page.frameLocator("#verificationCode-iframe");
-    await cvvFrame.locator("input").fill("123");
-
+const cvvFrame = page
+  .frameLocator('iframe[name="verificationCode-input"]')
+  .first();
+await cvvFrame.locator("input").fill("123");
     await page
       .getByRole("checkbox", { name: "I agree to the Terms and" })
       .check();
@@ -1101,11 +1101,10 @@ export async function fillPaymentDetails(page) {
 }
 
 export async function verifyPaymentPageBasics(page, sidePanelApiData) {
-  await expect(page).toHaveURL(/\/payment/, { timeout: 15000 });
-  await page.waitForLoadState("networkidle");
+  await expect(page).toHaveURL(/\/payment/);
   await expect(
     page.getByRole("heading", { name: "Payment Options" })
-  ).toBeVisible({ timeout: 10000 });
+  ).toBeVisible();
 
   const paymentSidePanel = page
     .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1821,13 +1820,10 @@ export async function verifyFandBInPaymentPage(page, fbTracker) {
 export async function setupTest(page, request) {
   // Note: Each test should set its own timeout using test.setTimeout()
   // Set a reasonable default timeout for page operations
-  page.setDefaultTimeout(120000); // 2 minutes
+  // page.setDefaultTimeout(120000); // 2 minutes
 
-  await page.goto(`${BASE_URL}/home`, {
-    waitUntil: "domcontentloaded",
-  });
-  await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
-
+   await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
+    await page.waitForURL(/novocinemas\.com\/home/);
   // Select movie
   const apiMovies = await fetchMoviesFromAPI(request);
   if (!apiMovies.length) throw new Error("No movies returned from API");
@@ -1855,8 +1851,6 @@ export async function setupTest(page, request) {
     await anyCard.scrollIntoViewIfNeeded();
     await anyCard.click();
   }
-
-  await page.waitForLoadState("networkidle");
 
   // Get movie details
   let movieId = selectedMovie?.movie_id;

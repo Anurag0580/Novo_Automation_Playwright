@@ -87,11 +87,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -177,12 +175,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           (resp) =>
             resp.url().includes("/api/booking/concessions/cinema/") &&
             resp.url().includes("trending")
-        ),
+        ),{timeout: 15000}
       ]);
 
       concessionsData = await concessionsResponse.json();
-      await page.waitForLoadState("networkidle");
-
+      // await page.waitForLoadState("networkidle");
       await expect(
         page.getByRole("heading", { name: "Snack Time!" })
       ).toBeVisible();
@@ -212,9 +209,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     // ================== PAYMENT PAGE ==================
-    await page.waitForURL((url) => url.pathname.includes("/payment"), {
-      timeout: 15000,
-    });
+    await page.waitForURL((url) => url.pathname.includes("/payment"));
 
     const bookingFeeQAR = bookingFeeCents / 100;
     const fbTotal = fbTracker ? fbTracker.totalPrice : 0;
@@ -312,11 +307,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
-
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -414,11 +406,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     // ================== EXPECT DIRECT PAYMENT ==================
-    await page.waitForURL((url) => url.pathname.includes("/payment"), {
-      timeout: 15000,
-    });
+    await page.waitForURL((url) => url.pathname.includes("/payment"));
 
-    await page.waitForLoadState("networkidle");
+    // await page.waitForLoadState("networkidle");
     await expect(
       page.getByRole("heading", { name: "Payment Options" })
     ).toBeVisible();
@@ -488,17 +478,15 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
   // TEST 3: Normal Ticket Booking WITHOUT F&B with LOYALTY OFFERS
   // ============================================================================
 
-  test.skip("TC_03 – Verify Normal Movie Ticket Booking Without F&B Using Loyalty Offer and Credit Card Payment", async ({
+  test("TC_03 – Verify Normal Movie Ticket Booking Without F&B Using Loyalty Offer and Credit Card Payment", async ({
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     await page.goto("https://qa.novocinemas.com/home", {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     // === Use helper functions ===
     const selectedMovie = await selectMovieDynamically(page, request);
@@ -517,9 +505,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     const authToken = await loginAndCaptureTokenLoyalty(page);
 
-    await page.waitForURL(/\/seat-selection\/cinema\/\d+\/session\/\d+/, {
-      timeout: 15000,
-    });
+    await page.waitForURL(/\/seat-selection\/cinema\/\d+\/session\/\d+/);
     const seatSelectionUrl = page.url();
     console.log("Seat Selection URL:", seatSelectionUrl);
 
@@ -612,6 +598,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     );
     const seatLayoutData = await seatLayoutResponse.json();
     const layout = seatLayoutData.data;
+    const skipConcession =
+      layout?.skip_concession === true ||
+      seatLayoutData?.skip_concession === true;
+    console.log("skip_concession (seat-layout):", skipConcession);
 
     console.log("Waiting for userSessionId capture...");
     const userSessionId = await userSessionIdPromise;
@@ -869,6 +859,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     // Verify offers against API data
     if (loyaltyApiData && loyaltyApiData.offers.length > 0) {
+      let actualLoyaltyDiscountCents = 0;
+      let loyaltyOfferApplied = false;
       console.log(
         `\nFound ${loyaltyApiData.offers.length} loyalty offers from API`
       );
@@ -890,26 +882,20 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         });
 
         try {
-          await expect(page.getByText(offer.description)).toBeVisible({
-            timeout: 5000,
-          });
+          await expect(page.getByText(offer.description)).toBeVisible();
           console.log(`✓ Description verified: "${offer.description}"`);
 
           const priceText = `Per ticket: QAR ${offer.pricePerTicket.toFixed(
             2
           )}`;
-          await expect(page.getByText(priceText)).toBeVisible({
-            timeout: 5000,
-          });
+          await expect(page.getByText(priceText)).toBeVisible();
           console.log(`✓ Price verified: ${priceText}`);
 
           const availableText = `Available: ${offer.availableQuantity} ticket${
             offer.availableQuantity > 1 ? "s" : ""
           }`;
           try {
-            await expect(page.getByText(availableText)).toBeVisible({
-              timeout: 5000,
-            });
+            await expect(page.getByText(availableText)).toBeVisible();
             console.log(`✓ Availability verified: ${availableText}`);
           } catch (error) {
             console.warn(
@@ -920,7 +906,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           const initialAmountLocator = page
             .locator(`text=/Amount: QAR\\s*0\\.00/`)
             .nth(i);
-          await expect(initialAmountLocator).toBeVisible({ timeout: 5000 });
+          await expect(initialAmountLocator).toBeVisible();
           console.log(`✓ Initial amount display verified: QAR 0.00`);
 
           const quantityContainer = page.getByText("-0+").nth(i);
@@ -987,11 +973,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
             .first();
           console.log(`Clicking + button for first offer...`);
           await plusButton.click();
-          await page.waitForTimeout(500);
+          // await page.waitForTimeout(500);
 
-          await expect(page.getByText("1", { exact: true }).nth(3)).toBeVisible(
-            { timeout: 3000 }
-          );
+          await expect(page.getByText("1", { exact: true }).nth(3)).toBeVisible();
           console.log(`✓ Quantity updated to 1`);
 
           const minusButton = page
@@ -1011,7 +995,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
               .locator("xpath=ancestor::div[1]");
             await expect(
               offerSection.locator(`text=${amountText}`)
-            ).toBeVisible({ timeout: 3000 });
+            ).toBeVisible();
             console.log(`✓ Amount calculation verified: ${amountText}`);
           } catch (error) {
             console.warn(`Trying alternative amount verification...`);
@@ -1035,18 +1019,18 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           console.log("\n=== Applying Selected Offer ===");
 
           const applyButton = page.getByRole("button", { name: "Apply" });
-          await expect(applyButton).toBeVisible({ timeout: 3000 });
+          await expect(applyButton).toBeVisible();
           await expect(applyButton).toBeEnabled();
           console.log("✓ Apply Offer button is visible and enabled");
 
           await applyButton.click();
-          console.log("✓ Clicked Apply Offer button");
 
           await expect(
             page.getByText("Offer Applied Successfully")
-          ).toBeVisible({ timeout: 5000 });
+          ).toBeVisible();
           console.log("✅ Offer applied successfully!");
           offerApplied = true;
+          loyaltyOfferApplied = true;
         } catch (error) {
           console.warn(`Could not select or apply first offer`);
           console.warn("Error:", error.message);
@@ -1098,142 +1082,87 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       console.log("\n✓ Dynamic price verification completed successfully\n");
 
       // === Proceed to Payment ===
-      console.log("\n=== Navigating to Payment Page ===");
-      let skipFnb = false;
+      console.log("\n=== Proceeding After Seat Selection ===");
 
-      const selectSeatsResponsePromise = page.waitForResponse(
-        (resp) =>
-          resp.url().includes("/api/booking/select-seats") &&
-          resp.request().method() === "POST",
-        { timeout: 20000 }
-      );
+      const continueBtn = page.getByRole("button", {
+        name: /^Continue$/i,
+      });
 
-      const loyaltyApplyPromise = page
-        .waitForResponse(
-          (resp) =>
-            resp.url().includes("/api/booking/loyalty/apply") &&
-            resp.request().method() === "POST",
-          { timeout: 20000 }
-        )
-        .catch(() => null);
+      const selectSeatsPredicate = (resp) =>
+        resp.url().includes("/api/booking/select-seats") &&
+        resp.request().method() === "POST";
+      const applyLoyaltyPredicate = (resp) =>
+        resp.url().includes("/api/booking/offers/grouped-loyalty/apply") &&
+        resp.request().method() === "POST" &&
+        resp.status() === 200;
 
-      // ✅ SAFE BUTTON CLICK (same as other test cases)
-const skipToPaymentBtn = page.getByRole("button", { name: /Skip to Payment QAR/i });
-const continueBtn = page.getByRole("button", { name: /^Continue$/i });
+      const [selectSeatsResponse, applyLoyaltyResponse] = await Promise.all([
+        page.waitForResponse(selectSeatsPredicate),
+        offerApplied
+          ? page.waitForResponse(applyLoyaltyPredicate)
+          : Promise.resolve(null),
+        continueBtn.click(),
+      ]);
 
-if (await skipToPaymentBtn.isVisible().catch(() => false)) {
-  await skipToPaymentBtn.click();
-  console.log('➡️ Clicked: "Skip to Payment QAR"');
-} else if (await continueBtn.isVisible().catch(() => false)) {
-  await continueBtn.click();
-  console.log('➡️ "Skip to Payment QAR" not visible, clicked: "Continue"');
-} else {
-  throw new Error('Neither "Skip to Payment QAR" nor "Continue" button is visible');
-}
-
-      // === Capture booking fee and loyalty discount ===
-      console.log("\n=== Capturing Booking Data ===");
-
-      let bookingFeeCents = 500;
-      let actualLoyaltyDiscountCents = 0;
-      let loyaltyOfferApplied = false;
-      let reservationId = null;
-
-      try {
-        const selectSeatsResponse = await selectSeatsResponsePromise;
-        const selectSeatsApiData = await selectSeatsResponse.json();
-        bookingFeeCents = selectSeatsApiData?.data?.bookingFee ?? 500;
-        skipFnb = selectSeatsApiData?.data?.skip_fnb === true;
-        reservationId = selectSeatsApiData?.data?.reservationId ?? null;
-        console.log("📌 Captured Reservation ID:", reservationId);
-        console.log("skip_fnb:", skipFnb);
-        console.log("💰 Base Booking Fee:", bookingFeeCents / 100, "QAR");
-      } catch (e) {
-        console.warn("Could not capture select-seats API response:", e);
-      }
-
-      try {
-        const loyaltyApplyResponse = await loyaltyApplyPromise;
-        if (loyaltyApplyResponse) {
-          const loyaltyApplyData = await loyaltyApplyResponse.json();
-          console.log(
-            "📝 Loyalty Apply API Response:",
-            JSON.stringify(loyaltyApplyData, null, 2)
-          );
-
-          if (loyaltyApplyData.success && loyaltyApplyData.data) {
-            loyaltyOfferApplied = true;
-            bookingFeeCents =
-              loyaltyApplyData.data.updated_booking_fee ?? bookingFeeCents;
-            actualLoyaltyDiscountCents =
-              loyaltyApplyData.data.discount_amount_in_cents ?? 0;
-
-            if (!reservationId && loyaltyApplyData.data.reservationId) {
-              reservationId = loyaltyApplyData.data.reservationId;
-            }
-
-            console.log("✅ Loyalty offer applied successfully!");
-            console.log(
-              "   - Discount Amount:",
-              actualLoyaltyDiscountCents / 100,
-              "QAR"
-            );
-            console.log(
-              "   - Updated Booking Fee:",
-              bookingFeeCents / 100,
-              "QAR"
-            );
-          }
-        }
-      } catch (e) {
-        console.log(
-          "ℹ️ No loyalty offer applied or API not captured:",
-          e.message
-        );
-      }
+      const selectSeatsApiData = await selectSeatsResponse.json();
+      let bookingFeeCents = selectSeatsApiData?.data?.bookingFee ?? 500;
+      let reservationId = selectSeatsApiData?.data?.reservationId ?? null;
       const bookingFeeQAR = bookingFeeCents / 100;
 
-      console.log(
-        "🧮 Final Booking Fee Used for UI Validation:",
-        bookingFeeQAR,
-        "QAR"
-      );
-      // ✅ CONDITIONAL NAVIGATION BASED ON skip_fnb
-if (skipFnb) {
-  console.log("🚀 skip_fnb=true → Direct Payment Page");
-  await page.waitForURL(/\/payment/, { timeout: 15000 });
-} else {
-  console.log("🍿 skip_fnb=false → Navigated to F&B Page first");
-  await page.waitForURL(/\/fnb/, { timeout: 15000 });
+      if (offerApplied && applyLoyaltyResponse) {
+        try {
+          const applyData = await applyLoyaltyResponse.json();
+          actualLoyaltyDiscountCents =
+            applyData?.data?.discount_amount_in_cents ?? 0;
+          console.log(
+            "✓ Loyalty discount from API (after Continue):",
+            actualLoyaltyDiscountCents / 100,
+            "QAR"
+          );
+        } catch {
+          console.warn("Could not parse apply loyalty offer response");
+        }
+      }
 
-}
+      console.log("📌 Reservation ID:", reservationId);
+      console.log("skip_concession (redirect):", skipConcession);
+      console.log("💰 Booking Fee:", bookingFeeCents / 100, "QAR");
+
+      if (skipConcession) {
+        await page.waitForURL(/\/payment/);
+      } else {
+        await page.waitForURL(/\/fnb/);
+        const continueFromFnb = page.getByRole('button', { name: 'Skip and Continue' });
+        await expect(continueFromFnb).toBeVisible();
+        await continueFromFnb.click();
+        await page.waitForURL(/\/payment/);
+      }
+
       // === Verify payment page ===
       console.log("\n=== Verifying Payment Page ===");
 
-      await expect(page).toHaveURL(/\/payment/, { timeout: 15000 });
-      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveURL(/\/payment/);
+      // await page.waitForLoadState("networkidle");
       await expect(
         page.getByRole("heading", { name: "Payment Options" })
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible();
 
       const paymentSidePanel = page
         .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
         .first();
-      await expect(paymentSidePanel).toBeVisible({ timeout: 10000 });
-      await expect(paymentSidePanel.getByText("Booking Details")).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(paymentSidePanel).toBeVisible();
+      await expect(paymentSidePanel.getByText("Booking Details")).toBeVisible();
       await expect(
         paymentSidePanel.getByRole("img", { name: "banner" })
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible();
       await expect(
         paymentSidePanel.getByText(sidePanelApiData.movie.movie_name)
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible();
       await expect(
         paymentSidePanel.locator("span", {
           hasText: sidePanelApiData.show_time,
         })
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible();
 
       console.log("✓ Payment page loaded successfully");
 
@@ -1256,9 +1185,7 @@ if (skipFnb) {
       console.log("\n=== Verifying Seats in Payment Page ===");
 
       for (const seat of clickedSeats) {
-        await expect(page.getByText(seat).first()).toBeVisible({
-          timeout: 5000,
-        });
+        await expect(page.getByText(seat).first()).toBeVisible();
         console.log(`✓ Seat ${seat} visible in payment page`);
       }
 
@@ -1271,9 +1198,7 @@ if (skipFnb) {
         }`;
 
         try {
-          await expect(page.getByText(ticketPriceText)).toBeVisible({
-            timeout: 5000,
-          });
+          await expect(page.getByText(ticketPriceText)).toBeVisible();
           console.log(
             `✓ Verified ticket price for ${areaName}: ${ticketPriceText}`
           );
@@ -1284,9 +1209,7 @@ if (skipFnb) {
               .replace(".", "\\.")}\\s*x\\s*${areaInfo.count}`
           );
           try {
-            await expect(page.locator("body")).toContainText(priceRegex, {
-              timeout: 5000,
-            });
+            await expect(page.locator("body")).toContainText(priceRegex);
             console.log(`✓ Verified ticket price (regex) for ${areaName}`);
           } catch {
             console.warn(`Could not verify ticket price: ${ticketPriceText}`);
@@ -1299,16 +1222,14 @@ if (skipFnb) {
 
       // ---------- Ticket ----------
       try {
-        await expect(page.getByText("Ticket", { exact: true })).toBeVisible({
-          timeout: 5000,
-        });
+        await expect(page.getByText("Ticket", { exact: true })).toBeVisible();
         await expect(
           page.getByText(
             new RegExp(
               `\\+\\s*QAR\\s*${Math.round(totalExpectedPrice)}(?:\\.\\d+)?`
             )
           )
-        ).toBeVisible({ timeout: 5000 });
+        ).toBeVisible();
         console.log("✓ Verified ticket subtotal");
       } catch {
         console.warn("Could not verify ticket subtotal");
@@ -1317,18 +1238,16 @@ if (skipFnb) {
       // ---------- Loyalty Discount ----------
       if (loyaltyOfferApplied && loyaltyDiscountAmount > 0) {
         try {
-          await expect(page.getByText("Loyalty Discount")).toBeVisible({
-            timeout: 5000,
-          });
+          await expect(page.getByText("Loyalty Discount")).toBeVisible();
 
           // amount may be "- QAR" or "- QAR 15"
           await expect(
             page.getByText(
               new RegExp(
-                `-\\s*QAR\\s*${Math.round(loyaltyDiscountAmount)}?(?:\\.\\d+)?`
+                `-\\s*QAR\\s*${Math.round(loyaltyDiscountAmount)}(?:\\.\\d+)?`
               )
             )
-          ).toBeVisible({ timeout: 5000 });
+          ).toBeVisible();
 
           console.log("✓ Verified loyalty discount");
         } catch {
@@ -1338,15 +1257,12 @@ if (skipFnb) {
 
       // ---------- Booking Fee ----------
       try {
-        await expect(page.getByText("Booking Fee")).toBeVisible({
-          timeout: 5000,
-        });
+        await expect(page.getByText("Booking Fee")).toBeVisible();
         await expect(
           page.getByText(
             new RegExp(`\\+\\s*QAR\\s*${bookingFeeQAR}(?:\\.\\d+)?`)
           )
         ).toBeVisible();
-        ({ timeout: 5000 });
         console.log("✓ Verified booking fee");
       } catch {
         console.warn("Could not verify booking fee");
@@ -1358,7 +1274,7 @@ if (skipFnb) {
 
         const possibleTotals = [
           Math.round(totalWithBookingFee), // after discount
-          Math.round(totalBeforeDiscount), // before discount
+          // Math.round(totalBeforeDiscount), // before discount
         ];
 
         let matched = false;
@@ -1367,7 +1283,6 @@ if (skipFnb) {
           try {
             await expect(totalRow).toContainText(
               new RegExp(`QAR\\s*${value}(?:\\.\\d+)?`),
-              { timeout: 3000 }
             );
 
             console.log(`✓ Verified total price: QAR ${value}`);
@@ -1394,19 +1309,17 @@ if (skipFnb) {
             .locator("div")
             .filter({ hasText: /^Offers & Promotions$/ })
             .first()
-        ).toBeVisible({ timeout: 5000 });
+        ).toBeVisible();
         console.log("✓ Offers & Promotions section visible");
 
-        await expect(page.getByText("Loyalty Offers").first()).toBeVisible({
-          timeout: 5000,
-        });
+        await expect(page.getByText("Loyalty Offers").first()).toBeVisible();
         console.log("✓ Loyalty Offers label visible");
 
         if (loyaltyOfferApplied && selectedOffer) {
           try {
             await expect(
               page.getByText(new RegExp(selectedOffer.description, "i")).first()
-            ).toBeVisible({ timeout: 5000 });
+            ).toBeVisible();
             console.log(
               `✓ Applied loyalty offer visible: ${selectedOffer.description}`
             );
@@ -1477,8 +1390,6 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000); // 3 minutes
-    page.setDefaultTimeout(120000); // 2 minutes
 
     const testData = await setupTest(page, request);
 
@@ -1575,8 +1486,6 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000); // 3 minutes
-    page.setDefaultTimeout(120000); // 2 minutes
 
     const testData = await setupTest(page, request);
 
@@ -1676,9 +1585,8 @@ if (skipFnb) {
           return urlContainsReservationId;
         }
 
-        return matchesEndpoint;
+        return matchesEndpoint && url.includes(reservationId);
       },
-      { timeout: 15000 }
     );
 
     // Click back arrow button
@@ -1717,13 +1625,13 @@ if (skipFnb) {
     );
 
     // Wait for navigation back to seat selection page
-    await page.waitForLoadState("networkidle");
+    // await page.waitForLoadState("networkidle");
 
     // Verify we're back on seat selection page
     const seatSelectionUrlPattern = new RegExp(
       `/seat-selection/cinema/${testData.cinemaId}/session/${testData.bookingResult.sessionId}`
     );
-    await expect(page).toHaveURL(seatSelectionUrlPattern, { timeout: 15000 });
+    await expect(page).toHaveURL(seatSelectionUrlPattern);
     console.log("✅ Successfully navigated back to seat selection page");
   });
 
@@ -1735,8 +1643,6 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     const testData = await setupTest(page, request);
 
@@ -1785,10 +1691,10 @@ if (skipFnb) {
     // ===============================
     if (skipFnb) {
       console.log("🚀 skip_fnb=true → Direct Payment");
-      await page.waitForURL(/\/payment/, { timeout: 15000 });
+      await page.waitForURL(/\/payment/);
     } else {
       console.log("🍿 skip_fnb=false → Navigated to F&B");
-      await page.waitForURL(/\/fnb/, { timeout: 15000 });
+      await page.waitForURL(/\/fnb/);
 
       await verifyFNBPageBasics(
         page,
@@ -1807,7 +1713,7 @@ if (skipFnb) {
         console.log("➡️ Clicked: Skip and Continue");
       }
 
-      await page.waitForURL(/\/payment/, { timeout: 15000 });
+      await page.waitForURL(/\/payment/);
     }
 
     // ===============================
@@ -1863,7 +1769,6 @@ if (skipFnb) {
         (res) =>
           res.url().includes("/api/booking/offers/remove") &&
           res.status() === 200,
-        { timeout: 5000 }
       )
       .catch(() => null);
 
@@ -1873,7 +1778,6 @@ if (skipFnb) {
         response.request().method() === "DELETE" &&
         response.url().includes("/api/booking/cancel-transaction/") &&
         response.url().includes(reservationId),
-      { timeout: 15000 }
     );
 
     // Back button from Payment
@@ -1900,15 +1804,15 @@ if (skipFnb) {
       );
 
       if (
-        await offerRemovedPopup.isVisible({ timeout: 3000 }).catch(() => false)
+        await offerRemovedPopup.isVisible().catch(() => false)
       ) {
         console.log("⚠️ Closing Offer Removed popup");
         await page.getByRole("button", { name: "Got it" }).click();
-        await expect(offerRemovedPopup).toBeHidden({ timeout: 5000 });
+        await expect(offerRemovedPopup).toBeHidden();
       }
 
       // After offer removal → user lands on F&B
-      await page.waitForURL(/\/fnb/, { timeout: 15000 });
+      await page.waitForURL(/\/fnb/);
 
       await verifyFNBPageBasics(
         page,
@@ -1950,7 +1854,7 @@ if (skipFnb) {
       `/seat-selection/cinema/${testData.cinemaId}/session/${testData.bookingResult.sessionId}`
     );
 
-    await expect(page).toHaveURL(seatSelectionUrl, { timeout: 15000 });
+    await expect(page).toHaveURL(seatSelectionUrl);
     console.log("✅ Navigated back to seat selection page");
   });
 
@@ -1962,11 +1866,9 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -2048,7 +1950,7 @@ if (skipFnb) {
       ]);
 
       const concessionsData = await concessionsResponse.json();
-      await page.waitForLoadState("networkidle");
+      // await page.waitForLoadState("networkidle");
       await expect(
         page.getByRole("heading", { name: "Snack Time!" })
       ).toBeVisible();
@@ -2097,19 +1999,15 @@ if (skipFnb) {
       );
 
       await page.getByRole("button", { name: "Continue" }).click();
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     } else {
       console.log(
         "🚀 skip_fnb=true → Skipping F&B and waiting for Payment page"
       );
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     }
 
-    await page.waitForLoadState("networkidle");
+    // await page.waitForLoadState("networkidle");
 
     // ======================================================
     // PAYMENT PAGE VERIFICATION (UNCHANGED)
@@ -2209,11 +2107,9 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -2286,7 +2182,7 @@ if (skipFnb) {
       );
 
       const concessionsData = await concessionsResponse.json();
-      await page.waitForLoadState("networkidle");
+      // await page.waitForLoadState("networkidle");
 
       await expect(
         page.getByRole("heading", { name: "Snack Time!" })
@@ -2303,22 +2199,18 @@ if (skipFnb) {
       }
 
       await page.getByRole("button", { name: "Continue" }).click();
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     } else {
       console.log(
         "🚀 skip_fnb=true → Skipping F&B and navigating directly to Payment"
       );
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     }
 
     // ======================================================
     // PAYMENT PAGE VERIFICATION (UNCHANGED)
     // ======================================================
-    await page.waitForLoadState("networkidle");
+    // await page.waitForLoadState("networkidle");
 
     const paymentSidePanel = page
       .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -2432,13 +2324,11 @@ if (skipFnb) {
     page,
     request,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(120000);
 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+    await page.waitForURL(/novocinemas\.com\/home/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -2511,7 +2401,7 @@ if (skipFnb) {
       );
 
       const concessionsData = await concessionsResponse.json();
-      await page.waitForLoadState("networkidle");
+      // await page.waitForLoadState("networkidle");
 
       await expect(
         page.getByRole("heading", { name: "Snack Time!" })
@@ -2529,22 +2419,18 @@ if (skipFnb) {
       }
 
       await page.getByRole("button", { name: "Continue" }).click();
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     } else {
       console.log(
         "🚀 skip_fnb=true → Skipping F&B and navigating directly to Payment"
       );
-      await page.waitForURL((url) => url.pathname.includes("/payment"), {
-        timeout: 15000,
-      });
+      await page.waitForURL((url) => url.pathname.includes("/payment"));
     }
 
     // ======================================================
     // PAYMENT PAGE VERIFICATION
     // ======================================================
-    await page.waitForLoadState("networkidle");
+    // await page.waitForLoadState("networkidle");
 
     const paymentSidePanel = page
       .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
