@@ -1,10 +1,10 @@
-import { expect } from '@playwright/test';
+import { expect } from "@playwright/test";
 
 const BASE_URL = process.env.PROD_FRONTEND_URL;
 const BACKEND_URL = process.env.PROD_BACKEND_URL;
 
 if (!BASE_URL || !BACKEND_URL) {
-  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
+  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
 }
 
 /**
@@ -12,10 +12,9 @@ if (!BASE_URL || !BACKEND_URL) {
  */
 const waitForPageLoad = async (page) => {
   try {
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForLoadState('networkidle', { timeout: 8000 });
+    await page.waitForLoadState("domcontentloaded");
   } catch {
-    console.warn('Page load timeout, continuing...');
+    console.warn("Page load timeout, continuing...");
   }
 };
 
@@ -24,7 +23,10 @@ const waitForPageLoad = async (page) => {
  */
 const switchLanguage = async (page, langText) => {
   try {
-    await page.getByRole('navigation').getByRole('button', { name: langText }).click();
+    await page
+      .getByRole("navigation")
+      .getByRole("button", { name: langText })
+      .click();
     await page.waitForTimeout(1200);
   } catch {
     console.warn(`Language switch to ${langText} failed`);
@@ -34,23 +36,23 @@ const switchLanguage = async (page, langText) => {
 /**
  * Validate image has loaded
  */
-const validateImageLoaded = async (locator, label = 'image') => {
+const validateImageLoaded = async (locator, label = "image") => {
   try {
     await locator.scrollIntoViewIfNeeded();
-    await expect(locator).toBeVisible({ timeout: 10000 });
+    await expect(locator).toBeVisible();
 
     await expect
       .poll(
         async () =>
-          locator.evaluate(img => img.complete && img.naturalWidth > 0),
+          locator.evaluate((img) => img.complete && img.naturalWidth > 0),
         {
           timeout: 10000,
-          message: `${label} did not finish loading`
-        }
+          message: `${label} did not finish loading`,
+        },
       )
       .toBe(true);
 
-    const src = await locator.getAttribute('src');
+    const src = await locator.getAttribute("src");
     console.log(`✔ ${label} loaded: ${src}`);
   } catch (e) {
     console.warn(`❌ ${label} failed to load`);
@@ -62,11 +64,11 @@ const validateImageLoaded = async (locator, label = 'image') => {
  */
 const validateImageBinding = async (locator, label) => {
   try {
-    await expect(locator).toHaveAttribute('src', /gumlet\.io|novo/i, {
-      timeout: 5000
+    await expect(locator).toHaveAttribute("src", /gumlet\.io|novo/i, {
+      timeout: 5000,
     });
 
-    const src = await locator.getAttribute('src');
+    const src = await locator.getAttribute("src");
     console.log(`✔ ${label} bound correctly: ${src}`);
   } catch (e) {
     console.warn(`❌ ${label} src binding failed: ${e.message}`);
@@ -78,13 +80,11 @@ const validateImageBinding = async (locator, label) => {
  */
 const validateBannerImageBinding = async (locator, label) => {
   try {
-    await expect(locator).toHaveAttribute(
-      'src',
-      /gumlet\.io|novo/i,
-      { timeout: 5000 }
-    );
+    await expect(locator).toHaveAttribute("src", /gumlet\.io|novo/i, {
+      timeout: 5000,
+    });
 
-    const src = await locator.getAttribute('src');
+    const src = await locator.getAttribute("src");
     console.log(`✔ ${label} src bound correctly: ${src}`);
   } catch (e) {
     console.warn(`❌ ${label} src binding failed: ${e.message}`);
@@ -96,13 +96,19 @@ const validateBannerImageBinding = async (locator, label) => {
  */
 const fetchApiData = async (page, apiConfig, pageId) => {
   const url = new URL(apiConfig.baseUrl);
-  Object.entries(apiConfig.params).forEach(([k, v]) => url.searchParams.append(k, v));
+  Object.entries(apiConfig.params).forEach(([k, v]) =>
+    url.searchParams.append(k, v),
+  );
 
-  const response = await page.request.get(url.toString(), { headers: apiConfig.headers });
+  const response = await page.request.get(url.toString(), {
+    headers: apiConfig.headers,
+  });
   expect(response.ok()).toBeTruthy();
 
   const json = await response.json();
-  const pageData = json.data.data.find(p => p.page_is_active && p.id === pageId);
+  const pageData = json.data.data.find(
+    (p) => p.page_is_active && p.id === pageId,
+  );
 
   expect(pageData).toBeDefined();
   return pageData;
@@ -111,15 +117,18 @@ const fetchApiData = async (page, apiConfig, pageId) => {
 /**
  * Strip HTML tags from text
  */
-const stripHtmlTags = (html = '') => {
-  if (!html) return '';
-  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+const stripHtmlTags = (html = "") => {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .trim();
 };
 
 /**
  * Extract email from HTML content
  */
-const extractEmailFromHtml = (html = '') => {
+const extractEmailFromHtml = (html = "") => {
   const match = html.match(/[\w.-]+@[\w.-]+\.\w+/);
   return match ? match[0] : null;
 };
@@ -129,8 +138,10 @@ const extractEmailFromHtml = (html = '') => {
  */
 const checkLoginStatus = async (page) => {
   try {
-    const profileIcon = page.locator('svg[data-testid="profile-icon"], .lucide.lucide-user');
-    const isLoggedIn = await profileIcon.isVisible({ timeout: 3000 });
+    const profileIcon = page.locator(
+      'svg[data-testid="profile-icon"], .lucide.lucide-user',
+    );
+    const isLoggedIn = await profileIcon.isVisible();
     return isLoggedIn;
   } catch {
     return false;
@@ -141,23 +152,22 @@ const checkLoginStatus = async (page) => {
  * Validate tier cards
  */
 const validateTierCards = async (page, tierCategories) => {
-  console.log('Validating tier cards...');
-  
+  console.log("Validating tier cards...");
+
   for (const tier of tierCategories) {
     try {
       if (tier.title) {
-        await expect(page.locator('body')).toContainText(
-          tier.title, 
-          { timeout: 5000 }
-        );
+        await expect(page.locator("body")).toContainText(tier.title, {
+          timeout: 5000,
+        });
         console.log(`✔ Tier card found: ${tier.title}`);
       }
 
       if (tier.description) {
         const cleanDesc = stripHtmlTags(tier.description).substring(0, 30);
-        await expect(page.locator('body')).toContainText(
-          new RegExp(cleanDesc, 'i'), 
-          { timeout: 3000 }
+        await expect(page.locator("body")).toContainText(
+          new RegExp(cleanDesc, "i"),
+          { timeout: 3000 },
         );
       }
 
@@ -175,29 +185,33 @@ const validateTierCards = async (page, tierCategories) => {
  * Validate Terms & Conditions tabs
  */
 const validateTermsTabs = async (page, types, questions) => {
-  console.log('Validating Terms & Conditions tabs...');
-  
+  console.log("Validating Terms & Conditions tabs...");
+
   for (const type of types) {
     try {
-      const tabButton = page.locator(`button, div`).filter({ 
-        hasText: new RegExp(`^${type}$`, 'i') 
-      }).first();
-      
+      const tabButton = page
+        .locator(`button, div`)
+        .filter({
+          hasText: new RegExp(`^${type}$`, "i"),
+        })
+        .first();
+
       await tabButton.scrollIntoViewIfNeeded();
       await tabButton.click({ timeout: 5000 });
       await page.waitForTimeout(500);
-      
+
       console.log(`✔ Tab clicked: ${type}`);
-      
-      const tabQuestions = questions.filter(q => q.key === type);
+
+      const tabQuestions = questions.filter((q) => q.key === type);
       if (tabQuestions.length > 0) {
         const firstQuestion = tabQuestions[0];
         if (firstQuestion.question) {
-          await expect(page.locator('body')).toContainText(
-            firstQuestion.question.substring(0, 20), 
-            { timeout: 3000 }
+          await expect(page.locator("body")).toContainText(
+            firstQuestion.question.substring(0, 20),
           );
-          console.log(`✔ Question found in tab: ${firstQuestion.question.substring(0, 30)}...`);
+          console.log(
+            `✔ Question found in tab: ${firstQuestion.question.substring(0, 30)}...`,
+          );
         }
       }
     } catch (e) {
@@ -213,23 +227,22 @@ const expandFaq = async (page, question, answer) => {
   try {
     const safeText = question
       .substring(0, 30)
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    const heading = page.getByRole('heading', {
-      name: new RegExp(safeText, 'i')
+    const heading = page.getByRole("heading", {
+      name: new RegExp(safeText, "i"),
     });
 
-    await expect(heading).toBeVisible({ timeout: 5000 });
+    await expect(heading).toBeVisible();
 
-    await heading.locator('..').click();
+    await heading.locator("..").click();
     await page.waitForTimeout(500);
 
     const cleanAnswer = stripHtmlTags(answer);
     if (cleanAnswer.length > 10) {
       const snippet = cleanAnswer.substring(0, 30);
-      await expect(page.locator('body')).toContainText(
-        new RegExp(snippet, 'i'),
-        { timeout: 5000 }
+      await expect(page.locator("body")).toContainText(
+        new RegExp(snippet, "i"),
       );
     }
 
@@ -252,5 +265,5 @@ export {
   checkLoginStatus,
   validateTierCards,
   validateTermsTabs,
-  expandFaq
+  expandFaq,
 };

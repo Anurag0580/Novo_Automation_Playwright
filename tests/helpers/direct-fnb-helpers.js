@@ -1,4 +1,6 @@
 import { expect } from '@playwright/test';
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
 
 export function createFBTracker() {
   return {
@@ -887,4 +889,209 @@ export async function clickCinemaAndNavigateToFandB(page, cinemaLocator, cinemaI
   );
   
   return concessionsData;
+}
+
+export async function setupDirectFNBFlow(page, request) {
+  console.log("\n🚀 Setting up Direct F&B Flow...\n");
+
+  // 1️⃣ Go to home (use baseURL from config)
+  await page.goto(`${BASE_URL}/home`, { waitUntil: 'domcontentloaded' });
+
+  const context = page.context();
+
+  // 2️⃣ Grant geolocation
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({
+    latitude: 19.1517288,
+    longitude: 72.8341961,
+  });
+
+  // 3️⃣ Navigate to Online Order
+  await page.getByRole('button', { name: 'Food & Beverages' }).click();
+  await page.getByRole('link', { name: 'Online Order' }).click();
+
+  // 4️⃣ Login
+  await page
+    .getByRole('button', { name: 'Log in to see your upcoming' })
+    .click();
+
+  const authToken = await loginAndCaptureTokenDirectFNB(page);
+
+  // 5️⃣ Enter F&B Flow
+  await page.getByRole('button', { name: 'CLICK HERE to order F&B' }).click();
+
+  // 6️⃣ Fetch cinema APIs
+  const cinemaDetails = await fetchCinemaDetails(
+    request,
+    19.1517288,
+    72.8341961
+  );
+
+  const cinemaTimings = await fetchCinemaTimings(request);
+
+  if (!cinemaDetails?.data?.length) {
+    throw new Error('No cinemas returned from cinema details API');
+  }
+
+  if (!cinemaTimings?.data?.length) {
+    throw new Error('No cinema timings returned from API');
+  }
+
+  // 7️⃣ Filter active cinemas for today
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+  });
+
+  const todayTimingsMap = new Map();
+
+  cinemaTimings.data
+    .filter(
+      (timing) => timing.day === today && timing.is_active === true
+    )
+    .forEach((timing) => {
+      if (!todayTimingsMap.has(timing.fk_cinema_id)) {
+        todayTimingsMap.set(timing.fk_cinema_id, timing);
+      }
+    });
+
+  if (todayTimingsMap.size === 0) {
+    throw new Error('No active cinemas available today');
+  }
+
+  const firstActiveCinemaId = Array.from(todayTimingsMap.keys())[0];
+
+  const selectedCinema =
+    cinemaDetails.data.find((c) => c.id === firstActiveCinemaId);
+
+  if (!selectedCinema) {
+    throw new Error('Active cinema ID not found in cinema details');
+  }
+
+  const selectedCinemaName = selectedCinema.name;
+
+  const cinemaLocator = page
+    .locator('div.relative.cursor-pointer.flex')
+    .filter({ hasText: new RegExp(selectedCinemaName, 'i') })
+    .first();
+
+  // 8️⃣ Click cinema & wait for F&B API (using your helper)
+  const concessionsData = await clickCinemaAndNavigateToFandB(
+    page,
+    cinemaLocator,
+    firstActiveCinemaId
+  );
+
+  console.log(`\n✅ Setup complete for cinema: ${selectedCinemaName}\n`);
+
+  return {
+    concessionsData,
+    selectedCinemaName,
+    authToken,
+    cinemaId: firstActiveCinemaId,
+  };
+}
+
+export async function loginAndCaptureTokenDirectFNB(page) {
+  const EMAIL = process.env.LOGIN_EMAIL;
+  const PASSWORD = process.env.LOGIN_PASSWORD;
+
+  if (!EMAIL || !PASSWORD) {
+    throw new Error("❌ LOGIN_EMAIL or LOGIN_PASSWORD is missing in .env");
+  }
+
+  let authToken = null;
+
+  const tokenListener = (req) => {
+    const headers = req.headers();
+    if (headers.authorization?.startsWith("Bearer")) {
+      authToken = headers.authorization;
+    }
+  };
+
+  page.on("request", tokenListener);
+
+  await page.getByRole("textbox", { name: "Enter your email" }).fill(EMAIL);
+  await page
+    .getByRole("textbox", { name: "Enter your password" })
+    .fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign In" }).click();
+
+  await expect(
+    page.getByRole("button", { name: /CLICK HERE to order F&B/i }),
+  ).toBeVisible({ timeout: 15000 });
+
+  await page.waitForTimeout(3000);
+
+  if (!authToken) {
+    authToken = await page.evaluate(() =>
+      localStorage.getItem("authorization_token"),
+    );
+  }
+
+  page.off("request", tokenListener);
+
+  if (!authToken) {
+    throw new Error("❌ Direct F&B auth token not captured");
+  }
+
+  await page.evaluate(
+    ([token]) => {
+      localStorage.setItem("auth_token", token.replace("Bearer ", ""));
+      localStorage.setItem("access_token", token.replace("Bearer ", ""));
+      localStorage.setItem("authorization_token", token);
+    },
+    [authToken],
+  );
+
+  return authToken;
+}
+
+export async function fetchCinemaDetails(request, lat, long, countryId = 1) {
+  try {
+    const response = await request.get(
+      `${BACKEND_URL}/api/home/cinemas?lat=${lat}&long=${long}&country_id=${countryId}&channel=web`,
+      {
+        headers: {
+          accept: "application/json, text/plain, */*",
+          origin: BASE_URL,
+          referer: `${BASE_URL}/`,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      console.error("Cinema details API response not OK:", response.status());
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching cinema details:", error);
+    return null;
+  }
+}
+
+export async function fetchCinemaTimings(request, countryId = 1) {
+  try {
+    const response = await request.get(
+      `${BACKEND_URL}/api/cinema/cinema-timings?country_id=${countryId}&channel=web`,
+      {
+        headers: {
+          accept: "application/json, text/plain, */*",
+          origin: BASE_URL,
+          referer: `${BASE_URL}/`,
+        },
+      },
+    );
+
+    if (!response.ok()) {
+      console.error("Cinema timings API response not OK:", response.status());
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching cinema timings:", error);
+    return null;
+  }
 }

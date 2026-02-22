@@ -25,9 +25,6 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_01 – Verify “About Us” Page Content, Images, External Links, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -60,7 +57,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("=== ENGLISH VERSION ===");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
     ).toBeVisible();
 
     if (en.description_heading) {
@@ -75,7 +72,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
       if (film.filmTitle) {
         await expect(
-          page.getByRole("heading", { name: film.filmTitle })
+          page.getByRole("heading", { name: film.filmTitle }),
         ).toBeVisible();
       }
 
@@ -114,7 +111,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (en.section_two?.title) {
       await expect(
-        page.getByRole("heading", { name: en.section_two.title })
+        page.getByRole("heading", { name: en.section_two.title }),
       ).toBeVisible();
       await validateImageLoaded(page.locator("img").last(), "Partner logo");
     }
@@ -123,7 +120,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
     ).toBeVisible();
 
     if (ar.description_heading) {
@@ -134,22 +131,22 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       const arFilm = ar.film[0];
       if (arFilm.filmTitle) {
         await expect(
-          page.getByRole("heading", { name: arFilm.filmTitle })
+          page.getByRole("heading", { name: arFilm.filmTitle }),
         ).toBeVisible();
       }
       await validateImageLoaded(
         page.locator("img").nth(1),
-        "Arabic film image"
+        "Arabic film image",
       );
     }
 
     if (ar.section_two?.title) {
       await expect(
-        page.getByRole("heading", { name: ar.section_two.title })
+        page.getByRole("heading", { name: ar.section_two.title }),
       ).toBeVisible();
       await validateImageLoaded(
         page.locator("img").last(),
-        "Arabic partner logo"
+        "Arabic partner logo",
       );
     }
 
@@ -161,9 +158,6 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_02 – Verify “Advertise With Us” Page Content, Feature Sections, Form Validation, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -203,12 +197,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ENGLISH VERSION ===");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
     ).toBeVisible();
 
     if (apiData.page_desc) {
       await expect(
-        page.getByText(apiData.page_desc, { exact: false })
+        page.getByText(apiData.page_desc, { exact: false }),
       ).toBeVisible();
     }
 
@@ -223,7 +217,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       const contentText = en.content.replace(/<[^>]*>/g, "").trim();
       if (contentText) {
         await expect(
-          page.getByText(contentText, { exact: false })
+          page.getByText(contentText, { exact: false }),
         ).toBeVisible();
       }
     }
@@ -237,7 +231,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
         if (feature.title) {
           await expect(
-            page.getByRole("heading", { name: feature.title })
+            page.getByRole("heading", { name: feature.title }),
           ).toBeVisible();
         }
 
@@ -247,7 +241,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
           try {
             await expect(page.getByText(snippet, { exact: false })).toBeVisible(
-              { timeout: 5000 }
+              { timeout: 5000 },
             );
           } catch {
             console.warn(`⚠ Description missing for: ${feature.title}`);
@@ -277,12 +271,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
     ).toBeVisible();
 
     if (apiData.page_desc_ar) {
       await expect(
-        page.getByText(apiData.page_desc_ar, { exact: false })
+        page.getByText(apiData.page_desc_ar, { exact: false }),
       ).toBeVisible();
     }
 
@@ -299,7 +293,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
         if (feature.title) {
           await expect(
-            page.getByRole("heading", { name: feature.title })
+            page.getByRole("heading", { name: feature.title }),
           ).toBeVisible();
         }
 
@@ -325,16 +319,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "ENG");
 
     console.log(
-      "\n✅ Advertise With Us page validation completed successfully"
+      "\n✅ Advertise With Us page validation completed successfully",
     );
   });
 
   test("TC_03 – Verify “Careers” Page Content, Email Links, Banner Images, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -374,12 +365,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ENGLISH VERSION ===");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
     ).toBeVisible();
 
     if (apiData.page_desc) {
       await expect(
-        page.getByText(apiData.page_desc, { exact: false })
+        page.getByText(apiData.page_desc, { exact: false }),
       ).toBeVisible();
     }
 
@@ -428,12 +419,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar })
+      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
     ).toBeVisible();
 
     if (apiData.page_desc_ar) {
       await expect(
-        page.getByText(apiData.page_desc_ar, { exact: false })
+        page.getByText(apiData.page_desc_ar, { exact: false }),
       ).toBeVisible();
     }
 
@@ -480,9 +471,6 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_04 – Verify “Privacy Policy” Page Content Sections, Links, Key Policy Areas, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -522,7 +510,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     try {
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name })
+        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
       ).toBeVisible({ timeout: 8000 });
       console.log(`✔ Page title validated: ${apiData.page_name}`);
     } catch {
@@ -544,7 +532,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           console.log(`✔ Description validated: ${snippet}...`);
         } catch {
           console.warn(
-            `Description phrase not found: ${phrase.substring(0, 50)}...`
+            `Description phrase not found: ${phrase.substring(0, 50)}...`,
           );
         }
       }
@@ -552,7 +540,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (en.contentArray && en.contentArray.length > 0) {
       console.log(
-        `\n--- Validating ${en.contentArray.length} Content Sections ---`
+        `\n--- Validating ${en.contentArray.length} Content Sections ---`,
       );
 
       for (let i = 0; i < en.contentArray.length; i++) {
@@ -562,7 +550,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
         if (section.title) {
           try {
             await expect(
-              page.getByText(section.title, { exact: false })
+              page.getByText(section.title, { exact: false }),
             ).toBeVisible({ timeout: 5000 });
             console.log(`✔ Section title validated: ${section.title}`);
           } catch {
@@ -577,7 +565,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           if (contentSnippet.length > 20) {
             try {
               await expect(
-                page.getByText(contentSnippet, { exact: false })
+                page.getByText(contentSnippet, { exact: false }),
               ).toBeVisible({ timeout: 5000 });
               console.log(`✔ Content validated: ${contentSnippet}...`);
             } catch {
@@ -591,7 +579,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
             try {
               const link = page.getByRole("link", {
                 name: new RegExp(
-                  linkUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                  linkUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
                 ),
               });
               await expect(link).toBeVisible({ timeout: 3000 });
@@ -609,7 +597,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     try {
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar })
+        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
       ).toBeVisible({ timeout: 8000 });
       console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
     } catch {
@@ -631,7 +619,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           console.log(`✔ Arabic description validated: ${snippet}...`);
         } catch {
           console.warn(
-            `Arabic description phrase not found: ${phrase.substring(0, 50)}...`
+            `Arabic description phrase not found: ${phrase.substring(0, 50)}...`,
           );
         }
       }
@@ -639,7 +627,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (ar.contentArray && ar.contentArray.length > 0) {
       console.log(
-        `\n--- Validating ${ar.contentArray.length} Arabic Content Sections ---`
+        `\n--- Validating ${ar.contentArray.length} Arabic Content Sections ---`,
       );
 
       for (let i = 0; i < ar.contentArray.length; i++) {
@@ -649,7 +637,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
         if (section.title) {
           try {
             await expect(
-              page.getByText(section.title, { exact: false }).first()
+              page.getByText(section.title, { exact: false }).first(),
             ).toBeVisible({ timeout: 5000 });
             console.log(`✔ Arabic section title validated: ${section.title}`);
           } catch {
@@ -664,12 +652,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           if (contentSnippet.length > 20) {
             try {
               await expect(
-                page.getByText(contentSnippet, { exact: false })
+                page.getByText(contentSnippet, { exact: false }),
               ).toBeVisible({ timeout: 5000 });
               console.log(`✔ Arabic content validated: ${contentSnippet}...`);
             } catch {
               console.warn(
-                `Arabic content not found for section: ${section.title}`
+                `Arabic content not found for section: ${section.title}`,
               );
             }
           }
@@ -680,7 +668,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
             try {
               const link = page.getByRole("link", {
                 name: new RegExp(
-                  linkUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+                  linkUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
                 ),
               });
               await expect(link).toBeVisible({ timeout: 3000 });
@@ -719,9 +707,6 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_05 – Verify “Terms and Conditions” Page Content Sections, Legal Policies, Links, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -762,7 +747,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     try {
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name })
+        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
       ).toBeVisible({ timeout: 8000 });
       console.log(`✔ Page title validated: ${apiData.page_name}`);
     } catch {
@@ -775,7 +760,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
       try {
         await expect(
-          page.getByText(descText.substring(0, 80), { exact: false })
+          page.getByText(descText.substring(0, 80), { exact: false }),
         ).toBeVisible({ timeout: 5000 });
         console.log(`✔ Description validated: ${descText.substring(0, 80)}...`);
       } catch {
@@ -785,7 +770,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (en.contentArray && en.contentArray.length > 0) {
       console.log(
-        `\n--- Validating ${en.contentArray.length} Content Sections ---`
+        `\n--- Validating ${en.contentArray.length} Content Sections ---`,
       );
 
       for (let i = 0; i < en.contentArray.length; i++) {
@@ -795,7 +780,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
         if (section.title) {
           try {
             await expect(
-              page.getByText(section.title, { exact: false })
+              page.getByText(section.title, { exact: false }),
             ).toBeVisible({ timeout: 5000 });
             console.log(`✔ Section title validated: ${section.title}`);
           } catch {
@@ -810,10 +795,10 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           if (contentSnippet.length > 20) {
             try {
               await expect(
-                page.getByText(contentSnippet, { exact: false })
+                page.getByText(contentSnippet, { exact: false }),
               ).toBeVisible({ timeout: 5000 });
               console.log(
-                `✔ Content validated: ${contentSnippet.substring(0, 60)}...`
+                `✔ Content validated: ${contentSnippet.substring(0, 60)}...`,
               );
             } catch {
               console.warn(`Content not found for section: ${section.title}`);
@@ -862,7 +847,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     try {
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar })
+        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
       ).toBeVisible({ timeout: 8000 });
       console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
     } catch {
@@ -875,21 +860,21 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
       try {
         await expect(
-          page.getByText(descText.substring(0, 80), { exact: false })
+          page.getByText(descText.substring(0, 80), { exact: false }),
         ).toBeVisible({ timeout: 5000 });
         console.log(
-          `✔ Arabic description validated: ${descText.substring(0, 80)}...`
+          `✔ Arabic description validated: ${descText.substring(0, 80)}...`,
         );
       } catch {
         console.warn(
-          `Arabic description not found: ${descText.substring(0, 50)}...`
+          `Arabic description not found: ${descText.substring(0, 50)}...`,
         );
       }
     }
 
     if (ar.contentArray && ar.contentArray.length > 0) {
       console.log(
-        `\n--- Validating ${ar.contentArray.length} Arabic Content Sections ---`
+        `\n--- Validating ${ar.contentArray.length} Arabic Content Sections ---`,
       );
 
       for (let i = 0; i < ar.contentArray.length; i++) {
@@ -899,7 +884,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
         if (section.title) {
           try {
             await expect(
-              page.getByText(section.title, { exact: false })
+              page.getByText(section.title, { exact: false }),
             ).toBeVisible({ timeout: 5000 });
             console.log(`✔ Arabic section title validated: ${section.title}`);
           } catch {
@@ -914,17 +899,17 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           if (contentSnippet.length > 20) {
             try {
               await expect(
-                page.getByText(contentSnippet, { exact: false })
+                page.getByText(contentSnippet, { exact: false }),
               ).toBeVisible({ timeout: 5000 });
               console.log(
                 `✔ Arabic content validated: ${contentSnippet.substring(
                   0,
-                  60
-                )}...`
+                  60,
+                )}...`,
               );
             } catch {
               console.warn(
-                `Arabic content not found for section: ${section.title}`
+                `Arabic content not found for section: ${section.title}`,
               );
             }
           }
@@ -969,16 +954,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "ENG");
 
     console.log(
-      "\n✅ Terms and Conditions page validation completed successfully"
+      "\n✅ Terms and Conditions page validation completed successfully",
     );
   });
 
   test("TC_06 – Verify “FAQ” Page Categories, Search Functionality, Question Expansion, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -1000,7 +982,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     const ar = apiData.page_json_ar;
 
     console.log(
-      `✔ API Data fetched: ${en.faqQuestions.length} EN FAQs, ${ar.faqQuestions.length} AR FAQs`
+      `✔ API Data fetched: ${en.faqQuestions.length} EN FAQs, ${ar.faqQuestions.length} AR FAQs`,
     );
 
     await page.goto(`${BASE_URL}/home`);
@@ -1017,7 +999,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ENGLISH VERSION ===");
 
     await expect(
-      page.getByRole("heading", { name: apiData.page_name })
+      page.getByRole("heading", { name: apiData.page_name }),
     ).toBeVisible();
 
     if (en.bannerArray?.[0]?.banner) {
@@ -1052,7 +1034,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     await expect(
-      page.getByRole("heading", { name: apiData.page_name_ar })
+      page.getByRole("heading", { name: apiData.page_name_ar }),
     ).toBeVisible();
 
     if (ar.bannerArray?.[0]?.banner) {
@@ -1085,7 +1067,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     await switchLanguage(page, "ENG");
     await expect(page.locator("body")).toContainText(
-      /Frequently Asked Questions/i
+      /Frequently Asked Questions/i,
     );
 
     console.log("\n✅ FAQ page validation completed successfully");
@@ -1094,9 +1076,6 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_07 – Verify “Premiere Club” Page Tiers, Membership Sections, Images, Terms Tabs, FAQs, Login State Behavior, and Language Switching Using Backend API Data", async ({
     page,
   }) => {
-    test.setTimeout(180000);
-    page.setDefaultTimeout(15000);
-
     const API_CONFIG = {
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
@@ -1118,7 +1097,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     const ar = apiData.page_json_ar;
 
     console.log(
-      `✔ API Data fetched: ${en.faqCategories.length} tier categories, ${en.questions.length} questions`
+      `✔ API Data fetched: ${en.faqCategories.length} tier categories, ${en.questions.length} questions`,
     );
 
     await page.goto(`${BASE_URL}/home`);
@@ -1136,7 +1115,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await expect(
       page
         .locator("h1,h2,h3")
-        .filter({ hasText: new RegExp(apiData.page_name, "i") })
+        .filter({ hasText: new RegExp(apiData.page_name, "i") }),
     ).toBeVisible({ timeout: 10000 });
     console.log(`✔ Page title validated: ${apiData.page_name}`);
 
@@ -1149,19 +1128,19 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     const isLoggedIn = await checkLoginStatus(page);
     console.log(
-      `User login status: ${isLoggedIn ? "Logged In" : "Logged Out"}`
+      `User login status: ${isLoggedIn ? "Logged In" : "Logged Out"}`,
     );
 
     if (!isLoggedIn) {
       try {
         await expect(
-          page.getByRole("button", { name: "Sign Up" }).first()
+          page.getByRole("button", { name: "Sign Up" }).first(),
         ).toBeVisible({ timeout: 5000 });
         await expect(page.getByRole("button", { name: "Log in" })).toBeVisible({
           timeout: 5000,
         });
         console.log(
-          "✔ Sign Up and Log in buttons visible (user not logged in)"
+          "✔ Sign Up and Log in buttons visible (user not logged in)",
         );
       } catch {
         console.warn("⚠ Login buttons not found or already logged in");
@@ -1175,7 +1154,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       const descSnippet = cleanDesc.substring(0, 30);
       await expect(page.locator("body")).toContainText(
         new RegExp(descSnippet, "i"),
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
       console.log("✔ Page description validated");
     }
@@ -1189,11 +1168,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (en.sectionTwoDescription) {
       const cleanSectionDesc = stripHtmlTags(
-        en.sectionTwoDescription
+        en.sectionTwoDescription,
       ).substring(0, 30);
       await expect(page.locator("body")).toContainText(
         new RegExp(cleanSectionDesc, "i"),
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
       console.log("✔ Section Two Description validated");
     }
@@ -1267,7 +1246,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await expect(
       page
         .locator("h1,h2,h3")
-        .filter({ hasText: new RegExp(apiData.page_name_ar, "i") })
+        .filter({ hasText: new RegExp(apiData.page_name_ar, "i") }),
     ).toBeVisible({ timeout: 10000 });
     console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
 
@@ -1275,7 +1254,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       const bannerImgAr = page.locator("img").first();
       await validateBannerImageBinding(
         bannerImgAr,
-        "Arabic Premiere Club Banner"
+        "Arabic Premiere Club Banner",
       );
     }
 
@@ -1284,7 +1263,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       const descSnippetAr = cleanDescAr.substring(0, 20);
       await expect(page.locator("body")).toContainText(
         new RegExp(descSnippetAr, "i"),
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
       console.log("✔ Arabic page description validated");
     }
@@ -1294,7 +1273,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
         timeout: 5000,
       });
       console.log(
-        `✔ Arabic Section Two Title validated: ${ar.sectionTwoTitle}`
+        `✔ Arabic Section Two Title validated: ${ar.sectionTwoTitle}`,
       );
     }
 
@@ -1339,7 +1318,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
           console.log(`✔ Important Arabic question found: ${questionText}`);
         } catch {
           console.warn(
-            `⚠ Important Arabic question not found: ${questionText}`
+            `⚠ Important Arabic question not found: ${questionText}`,
           );
         }
       }
@@ -1366,7 +1345,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "ENG");
     await expect(page.locator("body")).toContainText(
       new RegExp(apiData.page_name, "i"),
-      { timeout: 5000 }
+      { timeout: 5000 },
     );
 
     console.log("✅ Premiere Club page validation completed successfully");

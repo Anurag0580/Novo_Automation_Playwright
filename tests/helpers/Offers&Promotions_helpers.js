@@ -7,14 +7,6 @@
   if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
     throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
   }
-  const TIMEOUTS = {
-    test: 180000,
-    page: 120000,
-    api: 30000,
-    short: 2000,
-    medium: 5000,
-    long: 8000
-  };
 
   const HEADERS = {
     accept: 'application/json, text/plain, */*',
@@ -92,7 +84,6 @@
         resp =>
           resp.url().includes('offer-groups') &&
           [200, 304].includes(resp.status()),
-        { timeout: TIMEOUTS.api }
       ),
       page.getByRole('link', { name: 'Offers & Promotions' }).click()
     ]);
@@ -118,7 +109,7 @@
     for (const offer of offers) {
       console.log(`  Checking EXPECTED offer: ${offer.title}`);
       await expect(page.getByText(offer.title, { exact: false }).first())
-        .toBeVisible({ timeout: TIMEOUTS.long });
+        .toBeVisible()
     }
 
     // Verify excluded offers are hidden (don't fail on warning, just check)
@@ -139,10 +130,10 @@
   /**
    * Switch to a tab
    */
-  async function switchTab(page, tabButton) {
-    await tabButton.click();
-    await page.waitForTimeout(TIMEOUTS.short);
-  }
+ async function switchTab(page, tabButton) {
+  await tabButton.click();
+  await page.waitForTimeout(500); // or better: wait for specific content change
+}
 
   /**
    * Verify Learn More navigation for offers
@@ -171,7 +162,7 @@
       // await page.goBack();
       // await page.waitForLoadState('networkidle');
       // await expect(page).toHaveURL(offersPageUrl);
-      await page.goto(offersPageUrl, { waitUntil: 'networkidle' });
+      await page.goto(offersPageUrl, { waitUntil: 'domcontentloaded' });
     }
   }
 
@@ -338,7 +329,6 @@
   export {
     BASE_URL,
     API_BASE,
-    TIMEOUTS,
     HEADERS,
     fetchOffersData,
     parseOffers,

@@ -11,7 +11,6 @@ import {
   selectGiftCard,
   captureGiftCardAPI,
   formatPurchaseDate,
-  setupTest,
 } from "./helpers/giftcard_flow_helpers.js";
 
 test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Validation", () => {
@@ -19,7 +18,6 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
   test("TC_01 – Verify Gift Card Purchase Flow for Another Recipient (For Someone Else)", async ({
     page,
   }) => {
-    await setupTest(page);
 
     const testData = {
       recipientType: "For Someone Else",
@@ -67,7 +65,6 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
   test("TC_02 – Verify Gift Card Purchase Flow for Logged-In User (For Me) with Pre-Filled User Details", async ({
     page,
   }) => {
-    await setupTest(page);
 
     const testData = {
       recipientType: "Myself",
@@ -115,7 +112,6 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
   test("TC_03 – Verify Gift Card Top-Up Flow Using Existing Gift Card Number", async ({
     page,
   }) => {
-    await setupTest(page);
 
     await navigateToGiftCardFlow(page);
     await expect(
@@ -165,7 +161,6 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
   test("TC_04 – Verify Gift Card Balance Check Flow and Top-Up Navigation", async ({
     page,
   }) => {
-    await setupTest(page);
 
     await navigateToGiftCardFlow(page);
     await expect(

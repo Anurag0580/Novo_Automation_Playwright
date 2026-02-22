@@ -12,7 +12,7 @@ if (!process.env.PROD_FRONTEND_URL || !process.env.PROD_BACKEND_URL) {
 export default defineConfig({
   testDir: './tests',
 
-  timeout: 60000,
+  timeout: 180000, // 3 minutes per test
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

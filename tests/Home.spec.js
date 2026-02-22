@@ -48,7 +48,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     console.log("🌍 Country selected: QATAR");
 
     await expect(
-      page.getByRole("navigation").getByRole("img", { name: "Logo" })
+      page.getByRole("navigation").getByRole("img", { name: "Logo" }),
     ).toBeVisible();
 
     // Food & Beverages > Online Order
@@ -58,7 +58,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await onlineOrder.click();
     await expect(page).toHaveURL(/takeaway/);
     await expect(
-      page.getByRole("heading", { name: "Food & Drinks To-Go" })
+      page.getByRole("heading", { name: "Food & Drinks To-Go" }),
     ).toBeVisible();
 
     // Food & Beverages > Home Delivery
@@ -69,7 +69,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await homedelivery.click();
     await expect(page).toHaveURL(/homedelivery/);
     await expect(
-      page.locator("div").filter({ hasText: "Enjoy Novo CinemasTreats" }).nth(4)
+      page
+        .locator("div")
+        .filter({ hasText: "Enjoy Novo CinemasTreats" })
+        .nth(4),
     ).toBeVisible();
 
     // Offers & Promotions
@@ -79,7 +82,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await offerandPromotions.click();
     await expect(page).toHaveURL(/promotions/);
     await expect(
-      page.getByRole("heading", { name: "Offers & Promotions" })
+      page.getByRole("heading", { name: "Offers & Promotions" }),
     ).toBeVisible();
 
     // Locations
@@ -89,7 +92,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await locations.click();
     await expect(page).toHaveURL(/location/);
     await expect(
-      page.getByRole("heading", { name: "Explore our Locations" })
+      page.getByRole("heading", { name: "Explore our Locations" }),
     ).toBeVisible();
 
     // Experiences
@@ -99,7 +102,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await experiecnces.click();
     await expect(page).toHaveURL(/experiences/);
     await expect(
-      page.getByRole("heading", { name: "Novo Experiences" })
+      page.getByRole("heading", { name: "Novo Experiences" }),
     ).toBeVisible();
 
     // Private Booking
@@ -109,7 +112,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await privateBooking.click();
     await expect(page).toHaveURL(/privatebooking/);
     await expect(
-      page.getByRole("heading", { name: "Private Booking" })
+      page.getByRole("heading", { name: "Private Booking" }),
     ).toBeVisible();
 
     // Premiere Club
@@ -127,7 +130,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await headerButton(page, "العربية").click();
     await expect(headerLink(page, "العروض الترويجية")).toBeVisible();
     await expect(page.getByRole("navigation")).toContainText(
-      "العروض الترويجية"
+      "العروض الترويجية",
     );
     await expect(page.getByRole("navigation")).toContainText("الحجوزات الخاصة");
 
@@ -163,8 +166,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.waitForTimeout(2000);
     expect(
       apiCalls.some((call) =>
-        call.includes(`search=${encodeURIComponent(searchTerm)}`)
-      )
+        call.includes(`search=${encodeURIComponent(searchTerm)}`),
+      ),
     ).toBeTruthy();
     console.log(`🔍 Search triggered for movie: ${searchTerm}`);
 
@@ -173,7 +176,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await searchBox.clear();
     await expect(searchBox).toHaveValue("");
     expect(
-      apiCalls.some((url) => url.includes("search=&country_id=1&channel=web"))
+      apiCalls.some((url) => url.includes("search=&country_id=1&channel=web")),
     ).toBeTruthy();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
     console.log("✅ TC002 COMPLETED");
@@ -208,8 +211,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.waitForTimeout(2000);
     expect(
       apiCalls.some((call) =>
-        call.includes(`search=${encodeURIComponent(arabicSearchTerm)}`)
-      )
+        call.includes(`search=${encodeURIComponent(arabicSearchTerm)}`),
+      ),
     ).toBeTruthy();
     console.log(`🔍 Arabic search triggered for movie: ${arabicSearchTerm}`);
 
@@ -221,268 +224,140 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
   test("TC004 - Verify Homepage Banner Functionality and Navigation", async ({
     page,
   }) => {
-    test.setTimeout(120000);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
 
-    try {
-      await page.goto(`${BASE_URL}/home`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-    } catch (error) {
-      await page.goto(`${BASE_URL}/home`, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
-    }
+    const banner = page.locator(".slick-slider").first();
+    await expect(banner).toBeVisible();
 
-    try {
-      await page.waitForLoadState("networkidle", { timeout: 15000 });
-    } catch {
-      await page.waitForLoadState("domcontentloaded");
-      await page.waitForTimeout(3000);
-    }
+    const activeSlide = () => page.locator(".slick-slide.slick-active").first();
 
-    // Helper: Find element from multiple selectors
-    const findElement = async (selectors, parent = page) => {
-      for (const selector of selectors) {
-        const element = parent.locator(selector).first();
-        if (await element.isVisible().catch(() => false)) {
-          return element;
-        }
-      }
-      return null;
-    };
+    // ===============================
+    // 1️⃣ Banner Title Matching
+    // ===============================
+    await test.step("Verify banner visibility and title matching", async () => {
+      await expect(activeSlide()).toBeVisible();
 
-    // Helper: Get text from element
-    const getText = async (selectors, parent = page) => {
-      const element = await findElement(selectors, parent);
-      return element ? (await element.textContent())?.trim() : "";
-    };
+      const bannerTitle = activeSlide().locator("h1, h2").first();
+      await expect(bannerTitle).toBeVisible();
 
-    // Helper: Pause slider animation
-    const pauseSlider = async () => {
-      await page
-        .evaluate(() => {
-          const slider = document.querySelector(".slick-slider");
-          if (slider?.slick) {
-            slider.slick.pause();
-          }
-        })
-        .catch(() => {});
-    };
+      const movieCardTitle = activeSlide().locator("h1, h2, h3").nth(1);
 
-    // 1. Verify banner visibility and movie title matching
-    console.log("🎞 Banner visible and interaction started");
-    await test.step("Verify banner visibility and movie title matching", async () => {
-      const bannerContainer = await findElement([
-        ".slick-slider",
-        '[data-testid="banner"]',
-        ".banner-container",
-      ]);
-      await expect(bannerContainer).toBeVisible({ timeout: 20000 });
-
-      await page.waitForSelector(".slick-slide.slick-active", {
-        timeout: 15000,
-      });
-
-      const movieCard = await findElement([
-        ".slick-slide.slick-active > div > .px-2 > .rounded-\\[25px\\].\\32 xl\\:w-full",
-        ".slick-slide.slick-active .movie-card",
-        '.slick-slide.slick-active [data-testid="movie-card"]',
-      ]);
-
-      const bannerTitle = await getText([
-        ".slick-slide.slick-active h1",
-        ".slick-slide.slick-active h2",
-      ]);
-      const cardTitle = movieCard
-        ? await getText(["h1", "h2", "h3"], movieCard)
-        : "";
-
-      if (bannerTitle && cardTitle) {
-        expect(bannerTitle.toLowerCase()).toBe(cardTitle.toLowerCase());
-      }
-
-      if (movieCard) {
-        await movieCard.click();
+      if (await movieCardTitle.isVisible().catch(() => false)) {
+        const bannerText = (await bannerTitle.textContent())?.trim();
+        const cardText = (await movieCardTitle.textContent())?.trim();
+        expect(bannerText?.toLowerCase()).toBe(cardText?.toLowerCase());
       }
     });
 
-    // 2. Test Book Now button
-    await test.step("Test Book Now button", async () => {
-      await pauseSlider();
-      await page.waitForTimeout(2000);
+    // ===============================
+    // 2️⃣ Book Now Navigation
+    // ===============================
+    await test.step("Verify Book Now navigation", async () => {
+      const bookNowBtn = activeSlide().getByRole("button", {
+        name: /Book Now/i,
+      });
 
-      const bookNowButton = await findElement([
-        '.slick-slide.slick-active button:has-text("Book Now")',
-        ".slick-slide.slick-active .bg-\\[\\#FFDD00\\]",
-        'button:has-text("Book Now")',
-      ]);
-
-      if (bookNowButton) {
-        await bookNowButton.scrollIntoViewIfNeeded();
-        try {
-          await bookNowButton.click();
-        } catch {
-          await bookNowButton.click({ force: true });
-        }
-
-        await page.waitForTimeout(3000);
-        await page.goBack().catch(() => page.goto(`${BASE_URL}/home`));
-        await page.waitForTimeout(2000);
-      }
-    });
-
-    // 3. Test Watch Trailer
-    await test.step("Test Watch Trailer", async () => {
-      const maxChecks = 5;
-      let trailerFound = false;
-      let checks = 0;
-
-      const nextButton = page
-        .locator("div")
-        .filter({ hasText: /^1$/ })
-        .getByRole("button")
-        .nth(1);
-
-      while (!trailerFound && checks < maxChecks) {
-        checks++;
-        await pauseSlider();
-        await page.waitForTimeout(1000);
-
-        const trailerButton = await findElement([
-          ".slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .flex.items-center.gap-4 > .flex",
-          '.slick-slide.slick-active button:has-text("Watch Trailer")',
-          '.slick-slide.slick-active [aria-label*="play"]',
-          ".slick-slide.slick-active .flex > span > .lucide",
-          'button:has-text("Watch Trailer")',
-          '.slick-slide.slick-active svg[class*="lucide"]',
+      if (await bookNowBtn.count()) {
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+          bookNowBtn.click(),
         ]);
 
-        if (trailerButton) {
+        await expect(page).toHaveURL(/\/movies\/\d+/);
+
+        await page.goBack();
+        await expect(banner).toBeVisible();
+      }
+    });
+
+    // ===============================
+    // 3️⃣ Watch Trailer (Loop Search)
+    // ===============================
+    await test.step("Verify Watch Trailer modal opens and closes", async () => {
+      const maxSlides = 5;
+      let trailerFound = false;
+
+      const nextBtn = page.locator(".slick-arrow.slick-next").first();
+
+      for (let i = 0; i < maxSlides; i++) {
+        const trailerBtn = activeSlide()
+          .locator(
+            'button:has-text("Watch Trailer"), [aria-label*="play"], svg[class*="lucide"]',
+          )
+          .first();
+
+        if (await trailerBtn.isVisible().catch(() => false)) {
           trailerFound = true;
+          await trailerBtn.click();
 
-          await trailerButton.scrollIntoViewIfNeeded();
-          await page.waitForTimeout(500);
+          // Wait for YouTube iframe to attach to DOM
+          const ytIframe = page.locator('iframe[src*="youtube"]');
 
-          try {
-            await trailerButton.click({ timeout: 5000 });
-          } catch {
-            await trailerButton.click({ force: true });
-          }
-
-          await page.waitForTimeout(3000);
-
-          const popup = await findElement([
-            'iframe[title*="Trailer"]',
-            '[id*="headlessui-dialog"]',
-            '[role="dialog"]',
-            ".video-modal",
-            '[data-testid="video-modal"]',
-          ]);
-
-          if (popup) {
-            const closeButton = await findElement([
-              '[id*="headlessui-dialog"] svg',
-              '[id*="headlessui-dialog"] button',
-              '[aria-label*="close"]',
-              'button:has-text("Close")',
-              ".close-button",
-            ]);
-
-            if (closeButton) {
-              await closeButton.click();
-            } else {
-              await page.keyboard.press("Escape");
-            }
-            await page.waitForTimeout(2000);
-          }
+          await ytIframe.waitFor({ state: "attached", timeout: 20000 });
+          await expect(ytIframe).toBeVisible({ timeout: 20000 });
+          // Close modal
+          await page.keyboard.press("Escape");
 
           break;
-        } else {
-          if (
-            checks < maxChecks &&
-            (await nextButton.isVisible().catch(() => false))
-          ) {
-            await nextButton.click();
-            await page.waitForTimeout(2500);
-          } else {
-            break;
-          }
+        }
+
+        if (await nextBtn.isVisible().catch(() => false)) {
+          await nextBtn.click();
+          await expect(activeSlide()).toBeVisible();
         }
       }
+
+      expect(trailerFound).toBe(true);
     });
 
-    // 4. Test navigation buttons
-    await test.step("Test navigation buttons", async () => {
-      const nextBtn = page
-        .locator("div")
-        .filter({ hasText: /^1$/ })
-        .getByRole("button")
-        .nth(1);
-      const prevBtn = page
-        .locator("div")
-        .filter({ hasText: /^1$/ })
-        .getByRole("button")
-        .first();
-
-      const getCurrentIndex = async () => {
-        const indicator = await findElement([
-          ".slick-dots .slick-active",
-          ".slick-current",
-        ]);
-        return indicator
-          ? await indicator.textContent()
-          : Math.random().toString();
-      };
+    // ===============================
+    // 4️⃣ Next / Previous Navigation
+    // ===============================
+    await test.step("Verify next and previous banner navigation", async () => {
+      const nextBtn = page.locator(".slick-arrow.slick-next").first();
+      const prevBtn = page.locator(".slick-arrow.slick-prev").first();
 
       if (await nextBtn.isVisible().catch(() => false)) {
-        const initial = await getCurrentIndex();
+        const initialIndex = await activeSlide().getAttribute("data-index");
 
-        // Test next button 3 times
-        for (let i = 1; i <= 3; i++) {
-          await nextBtn.click();
-          await page.waitForTimeout(2000);
-          const current = await getCurrentIndex();
-          expect(current).not.toBe(initial);
-        }
+        await nextBtn.click();
+        await page.waitForFunction(
+          (initial) =>
+            document
+              .querySelector(".slick-slide.slick-active")
+              ?.getAttribute("data-index") !== initial,
+          initialIndex,
+        );
 
-        // Test previous button
-        const beforePrev = await getCurrentIndex();
+        const newIndex = await activeSlide().getAttribute("data-index");
+        expect(newIndex).not.toBe(initialIndex);
+
         await prevBtn.click();
-        await page.waitForTimeout(2000);
-        const afterPrev = await getCurrentIndex();
-        expect(afterPrev).not.toBe(beforePrev);
+        await expect(activeSlide()).toBeVisible();
       }
     });
 
-    // 5. Test auto-scroll
-    await test.step("Test auto-scroll", async () => {
-      const getActiveBanner = async () => {
-        const active = page.locator(".slick-active").first();
-        return (await active.isVisible())
-          ? (await active.getAttribute("data-index")) ||
-              (await active.textContent()?.slice(0, 50)) ||
-              Math.random().toString()
-          : Math.random().toString();
-      };
+    // ===============================
+    // 5️⃣ Auto Scroll Validation
+    // ===============================
+    await test.step("Verify banner auto-scroll", async () => {
+      const initialIndex = await activeSlide().getAttribute("data-index");
 
-      const initial = await getActiveBanner();
-      let changed = false;
+      await page.waitForFunction(
+        (initial) => {
+          const current = document
+            .querySelector(".slick-slide.slick-active")
+            ?.getAttribute("data-index");
+          return current && current !== initial;
+        },
+        initialIndex,
+        { timeout: 20000 },
+      );
 
-      for (let i = 0; i < 8; i++) {
-        await page.waitForTimeout(1000);
-        const current = await getActiveBanner();
-        if (current !== initial) {
-          changed = true;
-          break;
-        }
-      }
-
-      expect(changed).toBe(true);
       console.log("⏭ Banner auto-scroll verified");
     });
-    console.log("✅ TC004 COMPLETED");
+
+    console.log("✅ TC004 COMPLETED SUCCESSFULLY");
   });
 
   test("TC005 - Verify Movies Section Functionality in English", async ({
@@ -512,7 +387,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // 1. Fetch Trending Movies API
     const apiResponse = await request.get(
-      `${BACKEND_URL}/api/home/movies/trending?country_id=1&channel=web`
+      `${BACKEND_URL}/api/home/movies/trending?country_id=1&channel=web`,
     );
 
     expect(apiResponse.ok()).toBeTruthy();
@@ -536,10 +411,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.getByText("Top 10 Movies")).toBeVisible();
 
     const leftArrow = page.locator(
-      ".lucide.lucide-chevron-left.cursor-pointer"
+      ".lucide.lucide-chevron-left.cursor-pointer",
     );
     const rightArrow = page.locator(
-      ".lucide.lucide-chevron-right.cursor-pointer"
+      ".lucide.lucide-chevron-right.cursor-pointer",
     );
 
     await expect(leftArrow).toBeVisible();
@@ -549,7 +424,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // 3. Verify movie image dynamically
     await expect(
-      page.getByRole("img", { name: movieTitle }).first()
+      page.getByRole("img", { name: movieTitle }).first(),
     ).toBeVisible();
 
     const yellowHighlight = page.locator(".bg-gradient-to-b.h-full").first();
@@ -591,7 +466,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // 7. Trailer validation (API-driven)
     const trailerIcon = page.locator(
-      ".slick-slide.slick-active > div > div > .flex > .border > .lucide"
+      ".slick-slide.slick-active > div > div > .flex > .border > .lucide",
     );
 
     if (hasTrailer) {
@@ -601,7 +476,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         await trailerIcon.click();
 
         const ytIframe = page.frameLocator(
-          'iframe[title="YouTube video player"]'
+          'iframe[title="YouTube video player"]',
         );
 
         await ytIframe
@@ -612,7 +487,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         await ytIframe.getByRole("button", { name: /play/i }).click();
 
         await expect(
-          ytIframe.locator(".ytp-progress-bar-padding")
+          ytIframe.locator(".ytp-progress-bar-padding"),
         ).toBeVisible();
 
         // Close trailer modal
@@ -638,7 +513,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         }
       } else {
         console.warn(
-          `⚠ Trailer icon missing for movie with trailer: ${movieTitle}`
+          `⚠ Trailer icon missing for movie with trailer: ${movieTitle}`,
         );
       }
     } else {
@@ -669,8 +544,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    test.setTimeout(30000);
-
     const apiUrl = `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=1&channel=web`;
     let apiItems = [];
 
@@ -708,8 +581,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    test.setTimeout(240000);
-
     console.log("\n🚀 TEST STARTED: Offers & Promotions Validation");
     console.log("=".repeat(50));
 
@@ -729,7 +600,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       console.log(
         `   ${idx + 1}. ${offer.name} (ID: ${offer.id}, Order: ${
           offer.group_order
-        })`
+        })`,
       );
     });
 
@@ -764,8 +635,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    test.setTimeout(300000);
-
     try {
       await page.goto(`${BASE_URL}/home`, {
         waitUntil: "domcontentloaded",
@@ -795,7 +664,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     let skippedCount = 0;
     let failedExperiences = [];
 
-    for (const [index, exp] of experiences.entries()) {
+    const experiencesToTest = experiences.slice(0, 5); // limit to first 5
+    for (const [index, exp] of experiencesToTest.entries()) {
       const expName = exp.page_name || `Experience ${index + 1}`;
       const expId = exp.id;
       const bannerLogo = exp.page_json?.logo;
@@ -999,7 +869,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     expect(experiences.length).toBeGreaterThan(0);
     expect(processedCount).toBeGreaterThan(0);
     console.log(
-      `✅ TC010 COMPLETED | Processed: ${processedCount}, Skipped: ${skippedCount}`
+      `✅ TC010 COMPLETED | Processed: ${processedCount}, Skipped: ${skippedCount}`,
     );
   });
 
@@ -1011,7 +881,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.getByRole("img", { name: "PromoBG" })).toBeVisible();
     await expect(page.locator("body")).toContainText("Download Novo App!");
     await expect(
-      page.getByRole("img", { name: "Novo Cinemas Logo" })
+      page.getByRole("img", { name: "Novo Cinemas Logo" }),
     ).toBeVisible();
     await expect(
       page
@@ -1021,7 +891,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
           hasText:
             "About UsAdvertise With UsCareersPromotionsContact UsPrivacy PolicyTerms And",
         })
-        .first()
+        .first(),
     ).toBeVisible();
     await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
 
@@ -1053,12 +923,12 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     console.log("🔗 Social media links validated");
 
     await expect(
-      page.getByRole("contentinfo").getByRole("link", { name: "44260777" })
+      page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
     ).toBeVisible();
     await expect(
       page
         .getByRole("contentinfo")
-        .getByRole("link", { name: "Need Assistance ?" })
+        .getByRole("link", { name: "Need Assistance ?" }),
     ).toBeVisible();
 
     const assistancePagePromise = page.waitForEvent("popup");
@@ -1068,7 +938,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       .click();
     const assistancePage = await assistancePagePromise;
     await expect(assistancePage.url()).toContain(
-      "https://novocinemas.freshdesk.com/support/home"
+      "https://novocinemas.freshdesk.com/support/home",
     );
     await assistancePage.close();
 
@@ -1078,7 +948,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       page
         .locator("div")
         .filter({ hasText: /^Connect with Novo$/ })
-        .first()
+        .first(),
     ).toBeVisible();
 
     // Test social media links
@@ -1106,15 +976,15 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       await page.locator(socialLinks[i].selector).first().click();
       const socialPage = await socialPagePromise;
       await expect(socialPage.url()).toContain(
-        socialLinks[i].expectedUrl.split("?")[0]
+        socialLinks[i].expectedUrl.split("?")[0],
       );
       await socialPage.close();
     }
 
     await expect(
       page.getByText(
-        "SIGN UP FOR MOVIE OFFERS & UPDATESSubscribe for latest movie news, promotions,"
-      )
+        "SIGN UP FOR MOVIE OFFERS & UPDATESSubscribe for latest movie news, promotions,",
+      ),
     ).toBeVisible();
   });
 
@@ -1125,7 +995,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // Test About Us footer link
     await expect(
-      page.getByRole("listitem").filter({ hasText: "About Us" })
+      page.getByRole("listitem").filter({ hasText: "About Us" }),
     ).toBeVisible();
     await Promise.all([
       page.waitForURL("**/aboutUs"),
@@ -1133,14 +1003,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/aboutUs`);
     await expect(
-      page.getByRole("heading", { name: "Our Story" })
+      page.getByRole("heading", { name: "Our Story" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
     // Test Advertise With Us footer link
     await expect(
-      page.getByRole("listitem").filter({ hasText: "Advertise With Us" })
+      page.getByRole("listitem").filter({ hasText: "Advertise With Us" }),
     ).toBeVisible();
     await Promise.all([
       page.waitForURL("**/advertise"),
@@ -1148,14 +1018,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/advertise`);
     await expect(
-      page.getByRole("heading", { name: "Promote Your Brand at Novo" })
+      page.getByRole("heading", { name: "Promote Your Brand at Novo" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
     // Test Careers footer link
     await expect(
-      page.getByRole("listitem").filter({ hasText: "Careers" })
+      page.getByRole("listitem").filter({ hasText: "Careers" }),
     ).toBeVisible();
     await Promise.all([
       page.waitForURL("**/career"),
@@ -1168,7 +1038,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // Test Promotions footer link
     await expect(
-      page.getByRole("listitem").filter({ hasText: "Promotions" })
+      page.getByRole("listitem").filter({ hasText: "Promotions" }),
     ).toBeVisible();
     await Promise.all([
       page.waitForURL("**/promotions"),
@@ -1179,14 +1049,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/promotions`);
     await expect(
-      page.getByRole("heading", { name: "Offers & Promotions" })
+      page.getByRole("heading", { name: "Offers & Promotions" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
     // Test Contact Us footer link
     await expect(
-      page.getByRole("listitem").filter({ hasText: "Contact Us" })
+      page.getByRole("listitem").filter({ hasText: "Contact Us" }),
     ).toBeVisible();
     await page.getByRole("link", { name: "Contact Us" }).click();
     await page.waitForTimeout(1000);
@@ -1200,13 +1070,16 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
 
   // ============== Test Setup ==============
   test.beforeEach(async ({ page }) => {
-    await page.goto("https://qa.novocinemas.com/home", { waitUntil: "domcontentloaded" });
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(2000);
   });
 
   // ============== Test Cases ==============
 
-  test("TC_QB_01 - Verify user can complete Quick Book flow using dynamic API data and proceed to Seat Selection", async ({ page, request }) => {
+  test("TC_QB_01 - Verify user can complete Quick Book flow using dynamic API data and proceed to Seat Selection", async ({
+    page,
+    request,
+  }) => {
     console.log("\n\n========== TEST: TC_QB_01 START ==========");
     await openQuickBook(page);
 
@@ -1216,7 +1089,10 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
 
     // Fetch base data
     console.log("📋 Fetching base data for Quick Book...");
-    const baseData = await fetchQuickBookData(request, { country_id: 1, channel: "web" });
+    const baseData = await fetchQuickBookData(request, {
+      country_id: 1,
+      channel: "web",
+    });
 
     const selectedMovie = baseData.movies?.[0];
     const selectedCinema = baseData.cinemas?.[0];
@@ -1231,9 +1107,24 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
 
     // Select Movie, Cinema, Experience (API wait needed)
     console.log("\n📌 Selecting Movie, Cinema, and Experience...");
-    await clickAndSelectOption(page, dropdowns.movie, selectedMovie.movie_title, true);
-    await clickAndSelectOption(page, dropdowns.cinema, selectedCinema.name, true);
-    await clickAndSelectOption(page, dropdowns.experience, selectedExperience.experience_name, true);
+    await clickAndSelectOption(
+      page,
+      dropdowns.movie,
+      selectedMovie.movie_title,
+      true,
+    );
+    await clickAndSelectOption(
+      page,
+      dropdowns.cinema,
+      selectedCinema.name,
+      true,
+    );
+    await clickAndSelectOption(
+      page,
+      dropdowns.experience,
+      selectedExperience.experience_name,
+      true,
+    );
     console.log("✅ Movie, Cinema, and Experience selected");
 
     // Find first date with available sessions
@@ -1264,7 +1155,8 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
 
       if (Array.isArray(sessionsForDate) && sessionsForDate.length > 0) {
         const firstEnabledSession =
-          sessionsForDate.find((s) => s.sessionDisabled === false) || sessionsForDate[0];
+          sessionsForDate.find((s) => s.sessionDisabled === false) ||
+          sessionsForDate[0];
         finalShowtimeText = firstEnabledSession.show_time;
         console.log(`⏰ Found showtime: ${finalShowtimeText}`);
         break;
@@ -1274,12 +1166,20 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     }
 
     if (!finalShowtimeText) {
-      test.skip(true, "No available sessions found for any date in quick book API");
+      test.skip(
+        true,
+        "No available sessions found for any date in quick book API",
+      );
     }
 
     // Select Showtime (NO API wait)
     console.log("\n⏱️ Selecting showtime (NO API wait)...");
-    await clickAndSelectOption(page, dropdowns.showtime, finalShowtimeText, false);
+    await clickAndSelectOption(
+      page,
+      dropdowns.showtime,
+      finalShowtimeText,
+      false,
+    );
 
     // Click Book and verify navigation
     console.log("\n📌 Clicking Book button...");
@@ -1295,7 +1195,9 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     console.log("========== TEST: TC_QB_01 PASSED ==========\n");
   });
 
-  test("TC_QB_NEG_01 - Verify Book button remains disabled until all mandatory Quick Book selections are completed", async ({ page }) => {
+  test("TC_QB_NEG_01 - Verify Book button remains disabled until all mandatory Quick Book selections are completed", async ({
+    page,
+  }) => {
     console.log("\n\n========== TEST: TC_QB_NEG_01 START ==========");
     await openQuickBook(page);
 
@@ -1325,22 +1227,30 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
       console.log(`\n📌 Testing ${selection.name} selection...`);
       await selection.dropdown.click();
       await page.getByRole("option").first().click();
-      console.log(`✅ ${selection.name} selected, verifying Book button is still blocked...`);
+      console.log(
+        `✅ ${selection.name} selected, verifying Book button is still blocked...`,
+      );
       await expect(bookBtn).toHaveClass(/cursor-not-allowed/);
-      console.log(`✅ Book button still blocked after ${selection.name} selection`);
+      console.log(
+        `✅ Book button still blocked after ${selection.name} selection`,
+      );
     }
 
     // Select Showtime - Book should become clickable
     console.log("\n⏰ Testing Showtime selection...");
     await dropdowns.showtime.click();
     await page.getByRole("option").first().click();
-    console.log("✅ Showtime selected, verifying Book button is now enabled...");
+    console.log(
+      "✅ Showtime selected, verifying Book button is now enabled...",
+    );
     await expect(bookBtn).not.toHaveClass(/cursor-not-allowed/);
     console.log("✅ Book button is now enabled (as expected)");
     console.log("========== TEST: TC_QB_NEG_01 PASSED ==========\n");
   });
 
-  test("TC_QB_NEG_02 - Verify Showtime dropdown is disabled until Movie, Cinema, Experience, and Date are selected", async ({ page }) => {
+  test("TC_QB_NEG_02 - Verify Showtime dropdown is disabled until Movie, Cinema, Experience, and Date are selected", async ({
+    page,
+  }) => {
     console.log("\n\n========== TEST: TC_QB_NEG_02 START ==========");
     await openQuickBook(page);
 

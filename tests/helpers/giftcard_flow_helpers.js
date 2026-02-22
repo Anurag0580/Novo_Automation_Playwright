@@ -5,9 +5,6 @@ const BASE_URL = process.env.PROD_FRONTEND_URL;
 const BACKEND_URL = process.env.PROD_BACKEND_URL;
 
 const TEST_CARD_NUMBER = '2000001537711200';
-const DEFAULT_TIMEOUT = 180000;
-const DEFAULT_PAGE_TIMEOUT = 120000;
-
 if (!BASE_URL || !BACKEND_URL) {
   throw new Error('❌ Frontend or Backend URL is missing in .env file');
 }
@@ -197,21 +194,12 @@ function formatPurchaseDate(isoDate) {
   return `${day}${getSuffix(day)} ${month}`;
 }
 
-/**
- * Setup test timeouts
- */
-async function setupTest(page) {
-  test.setTimeout(DEFAULT_TIMEOUT);
-  page.setDefaultTimeout(DEFAULT_PAGE_TIMEOUT);
-}
 
 // ==================== EXPORTS ====================
 export {
   BASE_URL,
   BACKEND_URL,
   TEST_CARD_NUMBER,
-  DEFAULT_TIMEOUT,
-  DEFAULT_PAGE_TIMEOUT,
   loginAndCaptureToken,
   completePayment,
   getUserDetailsFromAPI,
@@ -220,5 +208,4 @@ export {
   selectGiftCard,
   captureGiftCardAPI,
   formatPurchaseDate,
-  setupTest
 };

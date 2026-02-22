@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 import {
-  TIMEOUTS,
-  fetchOffersData,
   parseOffers,
   categorizeOffers,
   navigateToOffers,
   verifyOffersInTab,
   switchTab,
   verifyLearnMoreNavigation,
-  verifyHoverDetails
+  verifyHoverDetails,
+  API_BASE,
+  HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
 
 const BASE_URL = process.env.PROD_FRONTEND_URL;
@@ -18,11 +18,19 @@ if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
   throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
 }
 
+let backendData;
+let parsedOffers;
 
-// ==================== TEST FIXTURES ====================
-test.beforeEach(async ({ page }) => {
-  test.setTimeout(TIMEOUTS.test);
-  page.setDefaultTimeout(TIMEOUTS.page);
+test.beforeAll(async ({ request }) => {
+  const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=1&channel=web`, { headers: HEADERS });
+  const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=1&channel=web`, { headers: HEADERS });
+
+  backendData = {
+    pages: await pages.json(),
+    offerGroups: await offerGroups.json()
+  };
+
+  parsedOffers = categorizeOffers(parseOffers(backendData));
 });
 
 // ==================== TEST SUITE ====================
@@ -35,7 +43,6 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
     await expect(page.locator('.relative > .absolute.inset-0').first()).toBeVisible();
     
     // Fetch and verify page heading
-    const backendData = await fetchOffersData(page);
     const pageName = backendData?.pages?.data?.data?.[0]?.page_name || 
                      backendData?.pages?.data?.page_name || 
                      'Offers & Promotions';
@@ -55,8 +62,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_02 – Verify “All” Tab Displays All Available Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { all } = categorizeOffers(parseOffers(backendData));
+    const { all } = parsedOffers;
     
     const allTab = page.getByRole('button', { name: 'All' });
     await switchTab(page, allTab);
@@ -67,8 +73,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_03 – Verify “Novo Offers & Promotions” Tab Displays Only Novo Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { normal, bin } = categorizeOffers(parseOffers(backendData));
+    const { normal, bin } = parsedOffers;
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
     await switchTab(page, novoTab);
@@ -79,8 +84,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_04 – Verify “Bank Offers & Promotions” Tab Displays Only Bank Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { normal, bin } = categorizeOffers(parseOffers(backendData));
+    const { normal, bin } = parsedOffers;
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
     await switchTab(page, bankTab);
@@ -91,45 +95,39 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_05 – Verify Offers Carousel Displays All Offers Through Slider Navigation', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { all } = categorizeOffers(parseOffers(backendData));
+    const { all } = parsedOffers;
     
     await expect(page.locator('.bg-background.p-5.lg\\:p-10')).toBeVisible();
     
     const rightButton = page.locator('.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)');
     const verifiedOffers = new Set();
-    const maxSlides = all.length * 2;
-    let slideCount = 0;
+const maxSlides = all.length * 2;
+let slideCount = 0;
 
-    console.log(`🎠 Verifying slider with ${all.length} offers`);
+while (verifiedOffers.size < all.length && slideCount < maxSlides) {
+  slideCount++;
 
-    while (verifiedOffers.size < all.length && slideCount < maxSlides) {
-      slideCount++;
-      await page.waitForTimeout(500);
-      
-      for (const offer of all) {
-        if (verifiedOffers.has(offer.title)) continue;
-        
-        const titleVisible = await page.getByRole('heading', { name: offer.title })
-          .nth(1)
-          .isVisible()
-          .catch(() => false);
-        
-        if (titleVisible) {
-          verifiedOffers.add(offer.title);
-          console.log(`  ✅ Found offer ${verifiedOffers.size}/${all.length}: ${offer.title}`);
-          break;
-        }
-      }
-      
-      if (verifiedOffers.size < all.length) {
-        await rightButton.click();
-        await page.waitForTimeout(800);
-      }
+  for (const offer of all) {
+    if (verifiedOffers.has(offer.title)) continue;
+
+    const titleVisible = await page
+      .getByRole('heading', { name: offer.title })
+      .first()
+      .isVisible()
+      .catch(() => false);
+
+    if (titleVisible) {
+      verifiedOffers.add(offer.title);
+      break;
     }
+  }
 
-    // Assert all offers were found
-    expect(verifiedOffers.size).toBe(all.length);
+  if (verifiedOffers.size < all.length) {
+    await rightButton.click();
+  }
+}
+
+expect(verifiedOffers.size).toBe(all.length);
     
     // List any missing offers
     if (verifiedOffers.size < all.length) {
@@ -142,8 +140,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_06 – Verify Offer Hover Details Are Displayed Correctly in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { all } = categorizeOffers(parseOffers(backendData));
+    const { all } = parsedOffers;
     
     const allTab = page.getByRole('button', { name: 'All' });
     await switchTab(page, allTab);
@@ -154,8 +151,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_07 – Verify Offer Hover Details Are Displayed Correctly in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { normal } = categorizeOffers(parseOffers(backendData));
+    const { normal } = parsedOffers;
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
     await switchTab(page, novoTab);
@@ -166,8 +162,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_08 – Verify Offer Hover Details Are Displayed Correctly in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { bin } = categorizeOffers(parseOffers(backendData));
+    const { bin } = parsedOffers;
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
     await switchTab(page, bankTab);
@@ -178,8 +173,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_09 – Verify “Learn More” Navigation from Offers in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { all } = categorizeOffers(parseOffers(backendData));
+    const { all } = parsedOffers;
     
     const allTab = page.getByRole('button', { name: 'All' });
     await switchTab(page, allTab);
@@ -190,8 +184,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_10 – Verify “Learn More” Navigation from Offers in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { normal } = categorizeOffers(parseOffers(backendData));
+    const { normal } = parsedOffers;
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
     await switchTab(page, novoTab);
@@ -202,8 +195,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_11 – Verify “Learn More” Navigation from Offers in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
-    const backendData = await fetchOffersData(page);
-    const { bin } = categorizeOffers(parseOffers(backendData));
+    const { bin } = parsedOffers;
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
     await switchTab(page, bankTab);
