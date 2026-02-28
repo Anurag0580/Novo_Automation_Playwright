@@ -124,6 +124,15 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page).toHaveURL(/premiereclub/);
     await expect(page.locator("text=Premiere Club").first()).toBeVisible();
 
+    //Bowling and Billiard
+    await page.goto(`${BASE_URL}/home`);
+    const bowlingandbilliards = headerLink(page, "Bowling & Billiard");
+    await expect(bowlingandbilliards).toBeVisible();
+    await bowlingandbilliards.click();
+    await page.goto(`${BASE_URL}/games/pick`);
+    await expect(page).toHaveURL(/games\/pick/);
+    await expect(page.getByRole("heading", { name: "Bowling & Billiard" })).toBeVisible();
+
     // Language Switching
     await page.goto(`${BASE_URL}/home`);
     console.log("🔄 Switching language to Arabic");
