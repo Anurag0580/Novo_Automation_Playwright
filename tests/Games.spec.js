@@ -75,6 +75,8 @@ export async function loginAndCaptureTokenGames(page) {
     throw new Error("❌ Games auth token not captured");
   }
 
+  console.log("Games auth token captured and stored");
+
   await page.evaluate(
     ([token]) => {
       localStorage.setItem("auth_token", token.replace("Bearer ", ""));
@@ -113,6 +115,9 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
 
     gamesData = (await getGamesApi.json()).data; // array of games
     gamesTemplateData = (await gamesTemplateApi.json()).data; // page template object
+    console.log(
+      `Games preloaded: ${gamesData?.length || 0}, template: ${gamesTemplateData?.page_name || "N/A"}`,
+    );
 
     await page.goto(`${BASE_URL}/home`);
     await page.waitForLoadState('domcontentloaded');
@@ -174,6 +179,9 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
     game.event_cinema[0]?.cinema_name;
 
   const landingBannerFileName = await captureLandingBannerFileName(page, game.name, BASE_URL);
+  console.log(
+    `TC_GAMES_03 context: game=${game.name}, cinema=${expectedCinemaName}, basePrice=${basePrice}`,
+  );
 
   await clickBookNow(page, game.name);
 
@@ -394,6 +402,9 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
   );
 
   const landingBannerFileName = await captureLandingBannerFileName(page, game.name, BASE_URL);
+  console.log(
+    `TC_GAMES_04 context: game=${game.name}, cinema=${expectedCinemaName}, selectedBasePrice=${selectedBasePrice}`,
+  );
 
   await clickBookNow(page, game.name);
 
@@ -491,6 +502,9 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
   const priceAtUpdatedQty = getPriceForDuration(game, cinemaIndex >= 0 ? cinemaIndex : 0, updatedQty);
 
   const landingBannerFileName = await captureLandingBannerFileName(page, game.name, BASE_URL);
+  console.log(
+    `TC_GAMES_05 context: game=${game.name}, cinema=${expectedCinemaName}, qty=${updatedQty}, price=${priceAtUpdatedQty}`,
+  );
 
   await clickBookNow(page, game.name);
 
@@ -618,6 +632,9 @@ test("TC_GAMES_06 – Validate Billiard Direct Checkout with Base Pricing (No F&
   const selectedPrice = getPriceForDuration(game, selectedCinemaIndex, updatedQty);
 
   const landingBannerFileName = await captureLandingBannerFileName(page, game.name, BASE_URL);
+  console.log(
+    `TC_GAMES_06 context: game=${game.name}, cinema=${expectedCinemaName}, qty=${updatedQty}, selectedPrice=${selectedPrice}`,
+  );
 
   await clickBookNow(page, game.name);
 
