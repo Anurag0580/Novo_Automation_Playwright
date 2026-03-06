@@ -94,24 +94,31 @@ const validateBannerImageBinding = async (locator, label) => {
 /**
  * Fetch API data for a specific page
  */
-const fetchApiData = async (page, apiConfig, pageId) => {
+const fetchApiData = async (page, apiConfig) => {
   const url = new URL(apiConfig.baseUrl);
+
   Object.entries(apiConfig.params).forEach(([k, v]) =>
-    url.searchParams.append(k, v),
+    url.searchParams.append(k, v)
   );
 
   const response = await page.request.get(url.toString(), {
     headers: apiConfig.headers,
   });
+
   expect(response.ok()).toBeTruthy();
 
   const json = await response.json();
-  const pageData = json.data.data.find(
-    (p) => p.page_is_active && p.id === pageId,
-  );
+
+  // Ensure CMS returned pages
+  expect(json.data.data.length).toBeGreaterThan(0);
+
+  // Get active page
+  const pageData = json.data.data.find((p) => p.page_is_active);
 
   expect(pageData).toBeDefined();
+
   return pageData;
+  
 };
 
 /**

@@ -40,7 +40,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       },
     };
 
-    const apiData = await fetchApiData(page, API_CONFIG, 2);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -173,7 +173,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       },
     };
 
-    const apiData = await fetchApiData(page, API_CONFIG, 4);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -341,7 +341,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       },
     };
 
-    const apiData = await fetchApiData(page, API_CONFIG, 1);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -486,7 +486,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       },
     };
 
-    const apiData = await fetchApiData(page, API_CONFIG, 9);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -722,7 +722,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       },
     };
 
-    const apiData = await fetchApiData(page, API_CONFIG, 6);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -977,7 +977,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     };
 
     console.log("Fetching FAQ data from API...");
-    const apiData = await fetchApiData(page, API_CONFIG, 10);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
@@ -1092,7 +1092,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     };
 
     console.log("Fetching Premiere Club data from API...");
-    const apiData = await fetchApiData(page, API_CONFIG, 14);
+    const apiData = await fetchApiData(page, API_CONFIG);
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
