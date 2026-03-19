@@ -58,13 +58,15 @@
   function categorizeOffers(offers) {
     const normal = offers.filter(o => o.type === 'NORMAL');
     const bin = offers.filter(o => o.type === 'BIN');
+    const collectible = offers.filter(o => o.type === 'COLLECTIBLE');
     
-    console.log(`✅ Categorized: ${offers.length} total, ${normal.length} NORMAL, ${bin.length} BIN`);
+    console.log(`✅ Categorized: ${offers.length} total, ${normal.length} NORMAL, ${bin.length} BIN, ${collectible.length} COLLECTIBLE`);
     
     return {
       all: offers,
       normal,
-      bin
+      bin,
+      collectible
     };
   }
 
@@ -102,11 +104,15 @@
   /**
    * Verify offers are visible in tab
    */
-  async function verifyOffersInTab(page, offers, excludeOffers = []) {
+  async function verifyOffersInTab(page, offers = [], ...excludeGroups) {
+    const excludeOffers = excludeGroups
+      .filter(group => Array.isArray(group))
+      .flat()
+      .filter(offer => offer?.title);
     console.log(`🔍 Verifying ${offers.length} offers are visible`);
     
     // Verify expected offers are visible
-    for (const offer of offers) {
+    for (const offer of offers.filter(offer => offer?.title)) {
       console.log(`  Checking EXPECTED offer: ${offer.title}`);
       await expect(page.getByText(offer.title, { exact: false }).first())
         .toBeVisible()
@@ -173,6 +179,85 @@
     html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
 
   /**
+   * Normalize URLs for flexible comparison
+   */
+  const normalizeUrl = (url = '') => url.replace(/\/+$/, '').trim();
+
+  /**
+   * Resolve expected CTA label and destination from offer details API
+   */
+  function getExpectedOfferCta(apiData) {
+    const hasCustomCta = Boolean(apiData?.cta_text?.trim());
+    const fallbackLabels = ['Explore Movies'];
+
+    return {
+      labels: hasCustomCta ? [apiData.cta_text.trim()] : fallbackLabels,
+      url: hasCustomCta && apiData?.cta_link?.trim()
+        ? apiData.cta_link.trim()
+        : new URL('/moviePages', BASE_URL).toString()
+    };
+  }
+
+  /**
+   * Find the visible CTA control by accessible name
+   */
+  async function getVisibleCtaLocator(page, labels) {
+    for (const label of labels) {
+      const linkLocator = page.getByRole('link', { name: label, exact: true }).first();
+      if (await linkLocator.isVisible().catch(() => false)) {
+        return { locator: linkLocator, label };
+      }
+
+      const buttonLocator = page.getByRole('button', { name: label, exact: true }).first();
+      if (await buttonLocator.isVisible().catch(() => false)) {
+        return { locator: buttonLocator, label };
+      }
+
+      const textLocator = page.getByText(label, { exact: true }).first();
+      if (await textLocator.isVisible().catch(() => false)) {
+        return { locator: textLocator, label };
+      }
+    }
+
+    return {
+      locator: page.getByText(labels[0], { exact: true }).first(),
+      label: labels[0]
+    };
+  }
+
+  /**
+   * Verify CTA text and redirection from offer details page
+   */
+  async function verifyOfferDetailsCta(page, apiData) {
+    const offerDetailsUrl = page.url();
+    const expectedCta = getExpectedOfferCta(apiData);
+    const { locator: ctaLocator, label: matchedLabel } = await getVisibleCtaLocator(page, expectedCta.labels);
+
+    await expect(ctaLocator).toBeVisible({ timeout: 10000 });
+
+    console.log(`✔ CTA verified: ${matchedLabel}`);
+
+    const href = await ctaLocator.evaluate((node) => {
+      const element = node instanceof HTMLElement ? node : null;
+      const anchor = element?.closest('a');
+      return anchor?.href || null;
+    }).catch(() => null);
+
+    if (href) {
+      expect(normalizeUrl(href)).toContain(normalizeUrl(expectedCta.url));
+    }
+
+    await ctaLocator.click({ force: true });
+
+    await page.waitForURL(
+      url => normalizeUrl(url.toString()).startsWith(normalizeUrl(expectedCta.url)),
+      { timeout: 10000 }
+    );
+
+    await page.goto(offerDetailsUrl, { waitUntil: 'domcontentloaded' });
+  }
+
+  /**
    * Validate image is loaded
    */
   const validateImageLoaded = async (locator, label) => {
@@ -218,8 +303,8 @@
     ).toBeVisible();
 
     // ---------- DESCRIPTION ----------
-    if (apiData.long_desc) {
-      const cleanDesc = stripHtmlTags(apiData.long_desc).substring(0, 40);
+    if (apiData.short_desc) {
+      const cleanDesc = stripHtmlTags(apiData.short_desc).substring(0, 40);
       await expect(page.locator('body')).toContainText(
         new RegExp(cleanDesc, 'i')
       );
@@ -286,10 +371,8 @@
       );
     }
 
-    // ---------- STATIC UI ----------
-    await expect(
-      page.locator('div').filter({ hasText: /^Explore Movies$/ })
-    ).toBeVisible();
+    // ---------- CTA / REDIRECTION ----------
+    await verifyOfferDetailsCta(page, apiData);
 
     console.log(`✅ Offer details verified for: ${apiData.name}`);
   }
