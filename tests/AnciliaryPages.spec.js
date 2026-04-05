@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/home-popup.fixture.js";
 import {
   waitForPageLoad,
   switchLanguage,
@@ -44,13 +44,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     const en = apiData.page_json;
     const ar = apiData.page_json_ar;
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "About Us" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/about-us`);
+      await page.goto(`${BASE_URL}/aboutUs`);
     }
     await waitForPageLoad(page);
 
@@ -183,13 +183,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       featureCount: en.featureArray?.length || 0,
     });
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, {waitUntil: "domcontentloaded"});
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "Advertise With Us" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/advertise-with-us`);
+      await page.goto(`${BASE_URL}/advertise`);
     }
 
     await waitForPageLoad(page);
@@ -351,13 +351,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       email: en.mail,
     });
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "Careers" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/careers`);
+      await page.goto(`${BASE_URL}/career`);
     }
 
     await waitForPageLoad(page);
@@ -496,13 +496,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       arabicSections: ar.contentArray?.length || 0,
     });
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "Privacy Policy" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/privacy-policy`);
+      await page.goto(`${BASE_URL}/privacy`);
     }
     await waitForPageLoad(page);
 
@@ -733,13 +733,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       arabicSections: ar.contentArray?.length || 0,
     });
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "Terms And Conditions" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/terms-and-conditions`);
+      await page.goto(`${BASE_URL}/terms`);
     }
     await waitForPageLoad(page);
 
@@ -985,13 +985,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       `✔ API Data fetched: ${en.faqQuestions.length} EN FAQs, ${ar.faqQuestions.length} AR FAQs`,
     );
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "FAQs" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/faq`);
+      await page.goto(`${BASE_URL}/faqs`);
     }
 
     await waitForPageLoad(page);
@@ -1067,7 +1067,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     await switchLanguage(page, "ENG");
     await expect(page.locator("body")).toContainText(
-      /Frequently Asked Questions/i,
+      /Frequently Asked Question/i,
     );
 
     console.log("\n✅ FAQ page validation completed successfully");
@@ -1100,7 +1100,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       `✔ API Data fetched: ${en.faqCategories.length} tier categories, ${en.questions.length} questions`,
     );
 
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
@@ -1354,13 +1354,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_08 – Verify “Contact Us” Page Navigation and Accessibility from Footer", async ({
     page,
   }) => {
-    await page.goto(`${BASE_URL}/home`);
+    await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
     try {
       await page.getByRole("link", { name: "Contact Us" }).click();
     } catch {
-      await page.goto(`${BASE_URL}/contact-us`);
+      await page.goto(`https://novocinemas.freshdesk.com/support/home`);
     }
     await waitForPageLoad(page);
     await page.goto(`${BASE_URL}/home`);

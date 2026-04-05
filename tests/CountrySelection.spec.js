@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/home-popup.fixture.js";
 const BASE_URL = process.env.PROD_FRONTEND_URL;
 const BACKEND_URL = process.env.PROD_BACKEND_URL;
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;

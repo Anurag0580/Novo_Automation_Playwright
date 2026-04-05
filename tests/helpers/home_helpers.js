@@ -452,3 +452,67 @@ export function getDropdownLocators(page) {
     showtime: page.locator("div").filter({ hasText: /^Showtime$/ }).nth(1),
   };
 }
+
+
+//====================Popup Helpers====================
+export async function closePosterIfVisible(page) {
+  const posters = page.getByRole('img', { name: 'Promotional Poster' });
+  const poster = posters.first();
+  const closeBtn = page.getByRole('button', { name: 'Close popup' });
+
+  try {
+    await Promise.race([
+      poster.waitFor({ state: 'visible', timeout: 5000 }),
+      closeBtn.waitFor({ state: 'visible', timeout: 5000 }),
+    ]);
+
+    const posterVisible = await poster.isVisible().catch(() => false);
+    const closeVisible = await closeBtn.isVisible().catch(() => false);
+
+    if (!posterVisible && !closeVisible) {
+      return false;
+    }
+
+    console.log('❌ Promotional poster detected, trying outside click first');
+
+    const outsidePoints = [
+      { x: 20, y: 20 },
+      { x: 20, y: 120 },
+      { x: 120, y: 20 },
+    ];
+
+    if (posterVisible) {
+      const box = await poster.boundingBox();
+      if (box) {
+        outsidePoints.unshift(
+          { x: Math.max(10, Math.floor(box.x / 2)), y: Math.max(10, Math.floor(box.y / 2)) },
+          { x: Math.min(Math.floor(box.x + box.width + 20), 300), y: Math.max(10, Math.floor(box.y / 2)) }
+        );
+      }
+    }
+
+    for (const point of outsidePoints) {
+      await page.mouse.click(point.x, point.y);
+      const stillVisible = await poster.isVisible().catch(() => false);
+      if (!stillVisible) {
+        console.log('✅ Poster closed successfully');
+        return true;
+      }
+      await page.waitForTimeout(200);
+    }
+
+    if (closeVisible) {
+      console.log('⚠️ Outside click did not close popup, using close button fallback');
+      await closeBtn.click();
+    }
+
+    await poster.waitFor({ state: 'hidden', timeout: 5000 }).catch(async () => {
+      await closeBtn.waitFor({ state: 'hidden', timeout: 5000 });
+    });
+    console.log('✅ Poster closed successfully');
+    return true;
+  } catch {
+    console.log('ℹ️ No promotional popup present');
+    return false;
+  }
+}

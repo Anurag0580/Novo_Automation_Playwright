@@ -303,10 +303,18 @@
     ).toBeVisible();
 
     // ---------- DESCRIPTION ----------
-    if (apiData.short_desc) {
-      const cleanDesc = stripHtmlTags(apiData.short_desc).substring(0, 40);
+    for (const field of ['short_desc', 'extra_info']) {
+      if (!apiData[field]) {
+        continue;
+      }
+
+      const cleanText = stripHtmlTags(apiData[field]).replace(/\s+/g, ' ').trim().substring(0, 40);
+      if (!cleanText) {
+        continue;
+      }
+
       await expect(page.locator('body')).toContainText(
-        new RegExp(cleanDesc, 'i')
+        new RegExp(cleanText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
       );
     }
 
@@ -362,14 +370,6 @@
       ).toBe(true);
     }
     console.log('✔ Portrait image loaded');
-
-    // ---------- EXTRA INFO (T&C / Additional Info) ----------
-    if (apiData.extra_info) {
-      const cleanExtra = stripHtmlTags(apiData.extra_info).substring(0, 30);
-      await expect(page.locator('body')).toContainText(
-        new RegExp(cleanExtra, 'i')
-      );
-    }
 
     // ---------- CTA / REDIRECTION ----------
     await verifyOfferDetailsCta(page, apiData);

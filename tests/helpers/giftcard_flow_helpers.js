@@ -97,11 +97,11 @@ async function getUserDetailsFromAPI(page) {
  * Navigate to gift card flow page
  */
 async function navigateToGiftCardFlow(page) {
-  await page.goto(`${BASE_URL}/home`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/home`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('navigation').getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
   await page.getByRole('link', { name: 'Gift Cards' }).click();
   await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 }
 
 /**

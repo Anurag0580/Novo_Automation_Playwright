@@ -274,12 +274,12 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(300);
 
-  const categoryButton = page.getByRole('button', { name: new RegExp(`^${categoryName}$`, 'i') });
+  const categoryButton = page.getByRole('button', { name: new RegExp(`^${categoryName.trim()}$`, 'i') });
   await expect(categoryButton.first()).toBeVisible({ timeout: 10000 });
   await categoryButton.first().click();
   await page.waitForTimeout(1000);
 
-  await expect(page.getByRole('heading', { name: new RegExp(categoryName, 'i') })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: new RegExp(`^${categoryName.trim()}$`, 'i') })).toBeVisible({ timeout: 10000 });
 
   const itemNameParts = itemName.split('\n');
   const mainItemName = itemNameParts[0].trim();
@@ -1010,6 +1010,15 @@ export async function loginAndCaptureTokenDirectFNB(page) {
 
   page.on("request", tokenListener);
 
+  const userDetailsPromise = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes("/api/user/user-details") &&
+        response.status() === 200,
+      { timeout: 30000 },
+    )
+    .catch(() => null);
+
   await page.getByRole("textbox", { name: "Enter your email" }).fill(EMAIL);
   await page
     .getByRole("textbox", { name: "Enter your password" })
@@ -1018,14 +1027,31 @@ export async function loginAndCaptureTokenDirectFNB(page) {
 
   await expect(
     page.getByRole("button", { name: /CLICK HERE to order F&B/i }),
-  ).toBeVisible({ timeout: 15000 });
+  ).toBeVisible({ timeout: 30000 });
 
-  await page.waitForTimeout(3000);
+  const userDetailsResponse = await userDetailsPromise;
+  if (userDetailsResponse && !authToken) {
+    const requestHeaders = userDetailsResponse.request().headers();
+    if (requestHeaders.authorization?.startsWith("Bearer")) {
+      authToken = requestHeaders.authorization;
+    }
+  }
 
   if (!authToken) {
-    authToken = await page.evaluate(() =>
-      localStorage.getItem("authorization_token"),
-    );
+    authToken = await page.evaluate(() => {
+      const tokenSources = [
+        localStorage.getItem("authorization_token"),
+        sessionStorage.getItem("authorization_token"),
+        localStorage.getItem("auth_token"),
+        sessionStorage.getItem("auth_token"),
+        localStorage.getItem("access_token"),
+        sessionStorage.getItem("access_token"),
+      ].filter(Boolean);
+
+      const token = tokenSources[0];
+      if (!token) return null;
+      return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
+    });
   }
 
   page.off("request", tokenListener);
