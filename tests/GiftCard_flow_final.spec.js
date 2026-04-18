@@ -5,7 +5,6 @@ import {
   TEST_CARD_NUMBER,
   loginAndCaptureToken,
   completePayment,
-  getUserDetailsFromAPI,
   navigateToGiftCardFlow,
   verifyOrderSummary,
   selectGiftCard,
@@ -75,12 +74,17 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
 
     await navigateToGiftCardFlow(page);
     await page.getByRole("button", { name: "Buy a Gift Card" }).click();
-    await loginAndCaptureToken(page);
+    const { userDetails } = await loginAndCaptureToken(page);
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/buygiftcard`);
     await page.waitForLoadState("networkidle");
 
-    const userDetails = await getUserDetailsFromAPI(page);
+    if (!userDetails) {
+      throw new Error(
+        "User details response was not captured during login. Start waiting before clicking Sign In."
+      );
+    }
+
     Object.assign(testData, {
       email: userDetails.email,
       phoneNumber: userDetails.phoneWithoutCode,
@@ -93,10 +97,18 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
     const emailInput = page.getByRole("textbox", { name: "Email Address" });
     const phoneInput = page.getByRole("textbox", { name: "Phone Number" });
 
-    expect(await emailInput.inputValue()).toBe(userDetails.email);
-    expect(await phoneInput.inputValue()).toContain(
-      userDetails.phoneWithoutCode
-    );
+    await expect
+      .poll(async () => await emailInput.inputValue(), {
+        timeout: 10000,
+        message: "Email field did not auto-populate after selecting 'For Me'",
+      })
+      .toBe(userDetails.email);
+    await expect
+      .poll(async () => await phoneInput.inputValue(), {
+        timeout: 10000,
+        message: "Phone field did not auto-populate after selecting 'For Me'",
+      })
+      .toContain(userDetails.phoneWithoutCode);
     console.log(`✅ Fields pre-filled correctly`);
 
     await page
@@ -119,6 +131,10 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
     ).toBeVisible();
     await page.getByRole("button", { name: "Top up" }).click();
     await loginAndCaptureToken(page);
+
+    if (new URL(page.url()).pathname === "/giftCardFlow") {
+      await page.getByRole("button", { name: "Top up" }).click();
+    }
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/topUpCard`);
     await page.waitForLoadState("networkidle");
@@ -230,3 +246,4 @@ test.describe("Gift Card Management – Purchase, Balance Check, and Top-Up Vali
     await completePayment(page);
   });
 });
+
