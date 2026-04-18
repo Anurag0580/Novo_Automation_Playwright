@@ -21,7 +21,14 @@ import {
   BASE_URL,
   BACKEND_URL,
   COUNTRY_ID,
+  COUNTRY_NAME,
+  FEATURES,
 } from "./helpers/envConfig.js";
+
+if(!FEATURES.games) {
+  console.warn(`⚠️ Games flow is disabled for ${COUNTRY_NAME}. Skipping Games.spec.js tests.`);
+}
+test.skip(!FEATURES.games, "Games flow is not available for this country");
 
 function getLowestPrice(game) {
   const allPrices = game.event_cinema.flatMap(cinema =>

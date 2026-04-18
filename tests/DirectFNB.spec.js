@@ -23,7 +23,14 @@ import {
   BASE_URL,
   BACKEND_URL,
   COUNTRY_ID,
+  COUNTRY_NAME,
+  FEATURES,
 } from "./helpers/envConfig.js";
+
+if(!FEATURES.directFnb) {
+  console.warn(`⚠️ Direct F&B flow is disabled for ${COUNTRY_NAME}. Skipping DirectFNB.spec.js tests.`);
+}
+test.skip(!FEATURES.directFnb, "Direct F&B flow is not available for this country");
 
 test.describe(
   "Direct F&B Online Ordering – Cinema Validation, Item Variants, and Payment Workflows",
