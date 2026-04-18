@@ -1,15 +1,13 @@
 import { test, expect } from "@playwright/test";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
 const Email = process.env.LOGIN_EMAIL;
 const Password = process.env.LOGIN_PASSWORD;
 const Phone = process.env.LOGIN_PHONE;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
 
 async function openLoginPopup(page) {
   const navButton = page

@@ -70,13 +70,11 @@ import {
   addFandBItemWithAlternates,
 } from "./helpers/direct-fnb-helpers.js";
 import { skip } from "node:test";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
 test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments & Transaction Handling)", () => {
   // ============================================================================
@@ -111,7 +109,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -330,7 +328,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -594,7 +592,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     console.log("Proceeding to seat selection to trigger seat layout API...");
 
     const seatLayoutResponse = await request.get(
-      `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const seatLayoutData = await seatLayoutResponse.json();
     const layout = seatLayoutData.data;
@@ -1890,7 +1888,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -2131,7 +2129,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -2350,7 +2348,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;

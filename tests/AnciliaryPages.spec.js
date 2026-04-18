@@ -13,13 +13,11 @@ import {
   validateTermsTabs,
   expandFaq,
 } from "./helpers/anciliarypages_helpers.js";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
 test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Language Validation", () => {
   test("TC_01 – Verify “About Us” Page Content, Images, External Links, and Language Switching Using Backend API Data", async ({
@@ -29,7 +27,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/about",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -162,7 +160,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/advertise",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -330,7 +328,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/career",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -475,7 +473,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/privacy",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -711,7 +709,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/t&c",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -965,7 +963,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/faq",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {
@@ -1080,7 +1078,7 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
       baseUrl: `${BACKEND_URL}/api/home/pages`,
       params: {
         key: "/clubs",
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
       },
       headers: {

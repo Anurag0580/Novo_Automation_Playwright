@@ -1,11 +1,10 @@
 import { expect } from '@playwright/test';
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
-  throw new Error('❌ Required URLs missing in .env');
+if (!REAL_DOMAIN_URL) {
+  throw new Error('❌ REAL_DOMAIN_URL missing in .env');
 }
 const DEFAULT_TIMEOUT = 15000;
 
@@ -28,7 +27,7 @@ export const LANGUAGE_CONFIG = {
   }
 };
 
-export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=1&channel=web&istop10=true`;
+export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=${COUNTRY_ID}&channel=web&istop10=true`;
 
 // ==================== HEADER HELPERS ====================
 
@@ -103,7 +102,7 @@ export async function fetchMoviesFromAPI(page) {
   try {
     console.log('🎬 Fetching movies from Movies API');
     const response = await page.request.get(
-      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=${COUNTRY_ID}&channel=web`
     );
 
     if (!response.ok()) {
@@ -367,10 +366,10 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
 // ==================== QUICK BOOK HELPERS ====================
 // ============== API Helpers ==============
 export async function fetchQuickBookData(request, params = {}) {
-  const url = new URL("https://backend.novocinemas.com/api/home/dynamic-quick-book/v2");
+  const url = new URL(`${BACKEND_URL}/api/home/dynamic-quick-book/v2`);
   console.log("🔡 Fetching Quick Book API with params:", params);
-  
-  url.searchParams.set("country_id", String(params.country_id ?? 1));
+
+  url.searchParams.set("country_id", String(params.country_id ?? COUNTRY_ID));
   url.searchParams.set("channel", params.channel ?? "web");
   
   if (params.movie_id) url.searchParams.set("movie_id", String(params.movie_id));
@@ -381,7 +380,7 @@ export async function fetchQuickBookData(request, params = {}) {
   const res = await request.get(url.toString(), {
     headers: {
       Accept: "application/json, text/plain, */*",
-      Referer: "https://qa.novocinemas.com/",
+      Referer: `${BASE_URL}/`,
     },
   });
 

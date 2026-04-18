@@ -1,11 +1,14 @@
 import { test, expect } from "@playwright/test";
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
+if (!REAL_DOMAIN_URL) {
   throw new Error(
-    "❌ PROD_FRONTEND_URL or PROD_BACKEND_URL or REAL_DOMAIN_URL missing in env"
+    "❌ REAL_DOMAIN_URL missing in env"
   );
 }
 

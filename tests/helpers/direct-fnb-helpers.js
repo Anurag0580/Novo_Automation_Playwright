@@ -1,6 +1,5 @@
 import { expect } from '@playwright/test';
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
 export function createFBTracker() {
   return {
@@ -1046,7 +1045,7 @@ export async function loginAndCaptureTokenDirectFNB(page) {
   return authToken;
 }
 
-export async function fetchCinemaDetails(request, lat, long, countryId = 1) {
+export async function fetchCinemaDetails(request, lat, long, countryId = COUNTRY_ID) {
   try {
     const response = await request.get(
       `${BACKEND_URL}/api/home/cinemas?lat=${lat}&long=${long}&country_id=${countryId}&channel=web`,
@@ -1071,7 +1070,7 @@ export async function fetchCinemaDetails(request, lat, long, countryId = 1) {
   }
 }
 
-export async function fetchCinemaTimings(request, countryId = 1) {
+export async function fetchCinemaTimings(request, countryId = COUNTRY_ID) {
   try {
     const response = await request.get(
       `${BACKEND_URL}/api/cinema/cinema-timings?country_id=${countryId}&channel=web`,

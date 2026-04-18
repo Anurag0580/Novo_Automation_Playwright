@@ -1,9 +1,7 @@
 import { expect, request as playwrightRequest } from "@playwright/test";
-const BACKEND_BASE_URL = process.env.PROD_BACKEND_URL;
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
-if (!BACKEND_BASE_URL || !process.env.PROD_FRONTEND_URL) {
-  throw new Error("❌ PROD_BACKEND_URL or PROD_FRONTEND_URL missing in env");
-}
+const BACKEND_BASE_URL = BACKEND_URL;
 
 // ============================================================================
 // LOYALTY OFFERS HELPERS
@@ -72,13 +70,13 @@ export async function verifyLoyaltyOffersAPI(
       authorization: bearerToken,
       accept: "application/json, text/plain, */*",
       "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-      origin: process.env.PROD_FRONTEND_URL,
-      referer: `${process.env.PROD_FRONTEND_URL}/`,
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
     },
   });
 
   try {
-    const apiUrl = `/api/booking/get-loyalty-ticket-types/cinemas/${numericCinemaId}/sessions/${numericSessionId}/userSessionId/${userSessionId}?country_id=1&channel=web`;
+    const apiUrl = `/api/booking/get-loyalty-ticket-types/cinemas/${numericCinemaId}/sessions/${numericSessionId}/userSessionId/${userSessionId}?country_id=${COUNTRY_ID}&channel=web`;
 
     console.log(`\n=== Calling Loyalty Offers API ===`);
     console.log(`Full URL: ${BACKEND_BASE_URL}${apiUrl}`);
@@ -179,7 +177,7 @@ export async function verifyBankOffers(page, request, sessionId, cinemaId) {
 
   const offersData = await request
     .get(
-      `${BACKEND_BASE_URL}/api/booking/offers/get/v2?cinemaId=${cinemaId}&sessionId=${sessionId}&country_id=1&channel=web`
+      `${BACKEND_BASE_URL}/api/booking/offers/get/v2?cinemaId=${cinemaId}&sessionId=${sessionId}&country_id=${COUNTRY_ID}&channel=web`
     )
     .then((r) => r.json());
 

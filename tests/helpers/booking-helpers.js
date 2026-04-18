@@ -1,11 +1,9 @@
 import { expect, request as playwrightRequest } from "@playwright/test";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./envConfig.js";
 
 const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
 const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
@@ -21,7 +19,7 @@ if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
 export async function fetchMoviesFromAPI(request) {
   try {
     const response = await request.get(
-      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=${COUNTRY_ID}&channel=web`
     );
     if (!response.ok()) return [];
     const responseData = await response.json();
@@ -109,7 +107,7 @@ export async function getMovieDetails(page, request, selectedMovie) {
   const apiResponse = await request.get(
     `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
-    )}?country_id=1&channel=web`
+    )}?country_id=${COUNTRY_ID}&channel=web`
   );
   const movieData = await apiResponse.json();
   return { movie: movieData.data, movieId, movieSlug };
@@ -227,9 +225,9 @@ export async function verifyMovieDetailsPageLoyalty(page, movie) {
 
 export async function dynamicBooking(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -238,7 +236,7 @@ export async function dynamicBooking(page, movieId) {
         dates.find((date) => new Date(date).getDay() === 3) || dates[0];
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
       const sessions = sessionsData.data.sessions[selectedDate];
@@ -268,7 +266,7 @@ export async function dynamicBooking(page, movieId) {
         experienceName: twoDExperienceName,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   const selectedDate = new Date(bookingData.selectedDate);
@@ -289,9 +287,9 @@ export async function dynamicBooking(page, movieId) {
 
 export async function dynamicBookingLoyalty(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -305,7 +303,7 @@ export async function dynamicBookingLoyalty(page, movieId) {
       }
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
       const sessions = sessionsData.data.sessions[selectedDate];
@@ -319,7 +317,7 @@ export async function dynamicBookingLoyalty(page, movieId) {
         debugSession: firstSession,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   console.log("Debug Session Object:", bookingData.debugSession);
@@ -354,9 +352,9 @@ export async function dynamicBookingLoyalty(page, movieId) {
 
 export async function dynamicBookingBankOffer(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -370,7 +368,7 @@ export async function dynamicBookingBankOffer(page, movieId) {
       }
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
 
@@ -386,7 +384,7 @@ export async function dynamicBookingBankOffer(page, movieId) {
         debugSession: firstSession,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   console.log("Debug Session Object:", bookingData.debugSession);
@@ -547,7 +545,7 @@ export async function loginAndCaptureTokenLoyalty(page) {
     });
 
     const ratingResponse = await apiContext.post(
-      "/api/booking/rating?for_seven_star=false&country_id=1&channel=web",
+      `/api/booking/rating?for_seven_star=false&country_id=${COUNTRY_ID}&channel=web`,
       { data: { search: "PG15" } }
     );
     console.log("Rating Status:", ratingResponse.status());
@@ -619,7 +617,7 @@ export async function sidePanelVerification(
   cinemaId
 ) {
   const sidePanelApi = await request.get(
-    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -643,7 +641,7 @@ export async function sidePanelVerification(
 
 export async function verifySidePanel(page, request, sessionId, cinemaId) {
   const sidePanelApi = await request.get(
-    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -675,7 +673,7 @@ export async function verifySidePanel(page, request, sessionId, cinemaId) {
 
 export async function getSeatLayout(page, request, sessionId, cinemaId) {
   const seatLayoutResponse = await request.get(
-    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -701,7 +699,7 @@ export async function selectSeats(
   seatCount = 1
 ) {
   const seatLayoutResponse = await request.get(
-    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -1201,7 +1199,7 @@ export async function completePaymentWithGiftCard(
 
   // 2️⃣ Fetch gift cards from API
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1324,7 +1322,7 @@ export async function applyAndRemoveGiftCardPayment(
 
   // ------------------ Fetch gift cards (API) ------------------
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1470,7 +1468,7 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
 
   // ------------------ Fetch gift cards ------------------
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1601,7 +1599,7 @@ export async function applyNovoWalletOnly(
 
   // ------------------ 1️⃣ CHECK WALLET BALANCE (API) ------------------
   const checkBalanceResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/wallet/check-balance?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/wallet/check-balance?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: authToken,
@@ -1873,7 +1871,7 @@ export async function setupTest(page, request) {
   const apiResponse = await request.get(
     `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
-    )}?country_id=1&channel=web`
+    )}?country_id=${COUNTRY_ID}&channel=web`
   );
   const movieData = await apiResponse.json();
   const movie = movieData.data;

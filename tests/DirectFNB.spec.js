@@ -19,13 +19,11 @@ import {
   completePaymentWithGiftCard,
   applyNovoWalletOnly,
 } from "./helpers/booking-helpers.js";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ Frontend or Backend URL missing in env");
-}
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
 test.describe(
   "Direct F&B Online Ordering – Cinema Validation, Item Variants, and Payment Workflows",

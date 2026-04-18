@@ -1,12 +1,8 @@
   import { expect } from '@playwright/test';
+  import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
   // ==================== CONSTANTS ====================
-  const BASE_URL = process.env.PROD_FRONTEND_URL;
-  const API_BASE = `${process.env.PROD_BACKEND_URL}/api/home`;
-
-  if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
-    throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
-  }
+  const API_BASE = `${BACKEND_URL}/api/home`;
 
   const HEADERS = {
     accept: 'application/json, text/plain, */*',
@@ -23,8 +19,8 @@
    */
   async function fetchOffersData(page) {
     const [pages, offerGroups] = await Promise.all([
-    page.request.get(`${API_BASE}/pages?key=/offers&country_id=1&channel=web`, { headers: HEADERS }),
-    page.request.get(`${API_BASE}/offer-groups?country_id=1&channel=web`, { headers: HEADERS })
+    page.request.get(`${API_BASE}/pages?key=/offers&country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS }),
+    page.request.get(`${API_BASE}/offer-groups?country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS })
   ]);
 
   return {
@@ -193,7 +189,7 @@
    */
   async function fetchOfferDetailsById(page, offerId) {
     const response = await page.request.get(
-      `${API_BASE}/offer-groups-by-id/${offerId}?country_id=1&channel=web`,
+      `${API_BASE}/offer-groups-by-id/${offerId}?country_id=${COUNTRY_ID}&channel=web`,
       { headers: HEADERS }
     );
 

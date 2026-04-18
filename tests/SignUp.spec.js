@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-const {
+import {
   navigateToSignup,
   generateSignupUser,
-  fillSignupForm
-} = require('./helpers/signup.helper');
+  fillSignupForm,
+} from './helpers/signup.helper.js';
 
 
 const Email = process.env.LOGIN_EMAIL;

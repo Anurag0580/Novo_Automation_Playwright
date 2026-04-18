@@ -1,13 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
 // ==================== CONSTANTS ====================
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
 const TEST_CARD_NUMBER = '2000001537711200';
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error('❌ Frontend or Backend URL is missing in .env file');
-}
 
 // ==================== HELPER FUNCTIONS ====================
 

@@ -10,20 +10,14 @@ import {
   API_BASE,
   HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = `${process.env.PROD_BACKEND_URL}/api/home`;
-
-if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
-  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
-}
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./helpers/envConfig.js";
 
 let backendData;
 let parsedOffers;
 
 test.beforeAll(async ({ request }) => {
-  const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=1&channel=web`, { headers: HEADERS });
-  const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=1&channel=web`, { headers: HEADERS });
+  const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
+  const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
 
   backendData = {
     pages: await pages.json(),

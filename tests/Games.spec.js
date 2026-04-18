@@ -17,9 +17,11 @@ import {
   verifyTotalInCheckout,
   verifyConcessionItemsInCheckout,
 } from "./helpers/games-flow-helpers.js";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
 function getLowestPrice(game) {
   const allPrices = game.event_cinema.flatMap(cinema =>
@@ -102,12 +104,11 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
   }
 
   test.beforeEach(async ({ page, request }) => {
-    // Fetch API data before navigating
     const getGamesApi = await request.get(
-      `${BACKEND_URL}/api/booking/get-games?country_id=1&channel=web`,
+      `${BACKEND_URL}/api/booking/get-games?country_id=${COUNTRY_ID}&channel=web`,
     );
     const gamesTemplateApi = await request.get(
-      `${BACKEND_URL}/api/booking/game-templates?key=/games&country_id=1&channel=web`,
+      `${BACKEND_URL}/api/booking/game-templates?key=/games&country_id=${COUNTRY_ID}&channel=web`,
     );
 
     expect(getGamesApi.ok()).toBeTruthy();

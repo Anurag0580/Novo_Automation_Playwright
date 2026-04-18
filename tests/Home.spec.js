@@ -24,13 +24,16 @@ import {
   getDropdownLocators,
 } from "./helpers/home_helpers.js";
 import { loginAndCaptureTokenBooking } from "./helpers/booking-helpers.js";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+} from "./helpers/envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
-  throw new Error("❌ Required URLs missing in .env");
+if (!REAL_DOMAIN_URL) {
+  throw new Error("❌ REAL_DOMAIN_URL missing in .env");
 }
 
 test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Language Validation", () => {
@@ -168,7 +171,9 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await navButton.click();
     await expect(searchBox).toBeVisible();
     await page.waitForTimeout(1500);
-    expect(apiCalls[0]).toMatch(/search=.*&country_id=1&channel=web/);
+    expect(apiCalls[0]).toMatch(
+      new RegExp(`search=.*&country_id=${COUNTRY_ID}&channel=web`),
+    );
 
     const searchTerm = getMovieName();
     await searchBox.fill(searchTerm);
@@ -185,7 +190,9 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await searchBox.clear();
     await expect(searchBox).toHaveValue("");
     expect(
-      apiCalls.some((url) => url.includes("search=&country_id=1&channel=web")),
+      apiCalls.some((url) =>
+        url.includes(`search=&country_id=${COUNTRY_ID}&channel=web`),
+      ),
     ).toBeTruthy();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
     console.log("✅ TC002 COMPLETED");
@@ -396,7 +403,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // 1. Fetch Trending Movies API
     const apiResponse = await request.get(
-      `${BACKEND_URL}/api/home/movies/trending?country_id=1&channel=web`,
+      `${BACKEND_URL}/api/home/movies/trending?country_id=${COUNTRY_ID}&channel=web`,
     );
 
     expect(apiResponse.ok()).toBeTruthy();
@@ -553,7 +560,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    const apiUrl = `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=1&channel=web`;
+    const apiUrl = `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=${COUNTRY_ID}&channel=web`;
     let apiItems = [];
 
     await test.step("Get trending items from API", async () => {
@@ -657,7 +664,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     let apiData, experiences;
     try {
-      const apiUrl = `${BACKEND_URL}/api/home/pages?key=experience&country_id=1&channel=web`;
+      const apiUrl = `${BACKEND_URL}/api/home/pages?key=experience&country_id=${COUNTRY_ID}&channel=web`;
       const response = await request.get(apiUrl);
       expect(response.ok()).toBeTruthy();
 
@@ -1099,7 +1106,7 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     // Fetch base data
     console.log("📋 Fetching base data for Quick Book...");
     const baseData = await fetchQuickBookData(request, {
-      country_id: 1,
+      country_id: COUNTRY_ID,
       channel: "web",
     });
 
@@ -1152,7 +1159,7 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
       // Fetch sessions for selected date
       console.log(`🔡 Fetching sessions for date: ${date}`);
       const sessionData = await fetchQuickBookData(request, {
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
         movie_id: selectedMovie.movie_id,
         cinema_id: selectedCinema.id,
