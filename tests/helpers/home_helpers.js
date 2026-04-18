@@ -448,7 +448,15 @@ export function getDropdownLocators(page) {
     movie: page.locator("div").filter({ hasText: /^Movie$/ }).nth(1),
     cinema: page.locator("div").filter({ hasText: /^Cinema$/ }).nth(1),
     experience: page.locator("div").filter({ hasText: /^Experience$/ }).nth(1),
-    date: page.locator("div").filter({ hasText: /^Date$/ }).nth(1),
+    // The date trigger text changes from the placeholder ("Date") to the selected
+    // value (for example "Tue, Apr 14, 2026"), so the locator needs to support both.
+    date: page
+      .locator("div")
+      .filter({
+        hasText:
+          /^(Date|[A-Za-z]{3},\s[A-Za-z]{3}\s\d{1,2},\s\d{4})$/,
+      })
+      .nth(1),
     showtime: page.locator("div").filter({ hasText: /^Showtime$/ }).nth(1),
   };
 }

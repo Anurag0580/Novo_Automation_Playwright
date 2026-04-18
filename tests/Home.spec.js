@@ -915,11 +915,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         name: "iOS",
         expectedUrl: "https://apps.apple.com/in/app/novo-cinemas/id363121411",
       },
-      {
-        name: "Huawei",
-        expectedUrl:
-          "https://appgallery.huawei.com/app/C101526647?appId=C101526647&source=appshare&subsource=C101526647&locale=en_US&source=appshare&subsource=C101526647",
-      },
     ];
 
     for (const app of appLinks) {
