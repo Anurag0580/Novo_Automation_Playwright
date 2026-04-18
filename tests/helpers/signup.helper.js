@@ -1,11 +1,5 @@
 import {expect} from '@playwright/test';
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-const Email = process.env.LOGIN_EMAIL;
-const Password = process.env.LOGIN_PASSWORD;
-const Phone = process.env.LOGIN_PHONE;
+import { BASE_URL, BACKEND_URL } from "./envConfig.js";
 
 async function dismissHomePopupIfPresent(page) {
   const poster = page.getByRole('img', { name: 'Promotional Poster' }).first();
@@ -50,7 +44,6 @@ async function dismissHomePopupIfPresent(page) {
 
   return false;
 }
-import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
 /**
  * Navigate to Sign Up page from Home
