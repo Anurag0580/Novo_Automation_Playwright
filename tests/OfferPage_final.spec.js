@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures/home-popup.fixture.js';
 import {
   parseOffers,
   categorizeOffers,
@@ -67,27 +67,38 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
 
   test('TC_03 – Verify “Novo Offers & Promotions” Tab Displays Only Novo Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const { normal, bin } = parsedOffers;
+    const { normal, bin,collectible } = parsedOffers;
     
     const novoTab = page.getByRole('button', { name: 'Novo Offers & Promotions' });
     await switchTab(page, novoTab);
-    await verifyOffersInTab(page, normal, bin);
-    
+    await verifyOffersInTab(page, normal, bin, collectible);
+
     console.log('✅ TC03: Novo offers tab verified');
   });
 
   test('TC_04 – Verify “Bank Offers & Promotions” Tab Displays Only Bank Offers as per Backend Data', async ({ page }) => {
     await navigateToOffers(page);
-    const { normal, bin } = parsedOffers;
+    const { normal, bin,collectible } = parsedOffers;
     
     const bankTab = page.getByRole('button', { name: 'Bank Offers & Promotions' });
     await switchTab(page, bankTab);
-    await verifyOffersInTab(page, bin, normal);
-    
+    await verifyOffersInTab(page, bin, normal, collectible);
+
     console.log('✅ TC04: Bank offers tab verified');
   });
 
-  test('TC_05 – Verify Offers Carousel Displays All Offers Through Slider Navigation', async ({ page }) => {
+  test('TC_05 – Verify “Collectible” Tab Displays Only Collectible Offers as per Backend Data', async ({ page }) => {
+    await navigateToOffers(page);
+    const { normal, bin,collectible } = parsedOffers;
+    
+    const collectibleTab = page.getByRole('button', { name: 'Collectables' });
+    await switchTab(page, collectibleTab);
+    await verifyOffersInTab(page, collectible, normal, bin);
+
+    console.log('✅ TC05: Collectible offers tab verified');
+  });
+
+  test('TC_06 – Verify Offers Carousel Displays All Offers Through Slider Navigation', async ({ page }) => {
     await navigateToOffers(page);
     const { all } = parsedOffers;
     
@@ -129,10 +140,10 @@ expect(verifiedOffers.size).toBe(all.length);
       throw new Error(`Missing offers in slider: ${missing.join(', ')}`);
     }
     
-    console.log('✅ TC05: All slider offers verified');
+    console.log('✅ TC06: All slider offers verified');
   });
 
-  test('TC_06 – Verify Offer Hover Details Are Displayed Correctly in “All” Tab', async ({ page }) => {
+  test('TC_07 – Verify Offer Hover Details Are Displayed Correctly in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { all } = parsedOffers;
     
@@ -140,10 +151,10 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, allTab);
     
     await verifyHoverDetails(page, all);
-    console.log('✅ TC06: Hover details on All tab verified');
+    console.log('✅ TC07: Hover details on All tab verified');
   });
 
-  test('TC_07 – Verify Offer Hover Details Are Displayed Correctly in “Novo Offers & Promotions” Tab', async ({ page }) => {
+  test('TC_08 – Verify Offer Hover Details Are Displayed Correctly in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { normal } = parsedOffers;
     
@@ -151,10 +162,10 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, novoTab);
     
     await verifyHoverDetails(page, normal);
-    console.log('✅ TC07: Hover details on Novo tab verified');
+    console.log('✅ TC08: Hover details on Novo tab verified');
   });
 
-  test('TC_08 – Verify Offer Hover Details Are Displayed Correctly in “Bank Offers & Promotions” Tab', async ({ page }) => {
+  test('TC_09 – Verify Offer Hover Details Are Displayed Correctly in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { bin } = parsedOffers;
     
@@ -162,10 +173,22 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, bankTab);
     
     await verifyHoverDetails(page, bin);
-    console.log('✅ TC08: Hover details on Bank tab verified');
+    console.log('✅ TC09: Hover details on Bank tab verified');
   });
 
-  test('TC_09 – Verify “Learn More” Navigation from Offers in “All” Tab', async ({ page }) => {
+  test('TC_10 – Verify Offer Hover Details Are Displayed Correctly in “Collectibles” Tab', async ({ page }) => {
+    await navigateToOffers(page);
+    const { collectible } = parsedOffers;
+    
+    const collectibleTab = page.getByRole('button', { name: 'Collectables' });
+    await switchTab(page, collectibleTab);
+    
+    await verifyHoverDetails(page, collectible);
+    console.log('✅ TC10: Hover details on Collectible tab verified');
+  });
+
+
+  test('TC_11 – Verify “Learn More” Navigation from Offers in “All” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { all } = parsedOffers;
     
@@ -173,10 +196,10 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, allTab);
     
     await verifyLearnMoreNavigation(page, all.slice(0, 2));
-    console.log('✅ TC09: Learn More navigation on All tab verified');
+    console.log('✅ TC11: Learn More navigation on All tab verified');
   });
 
-  test('TC_10 – Verify “Learn More” Navigation from Offers in “Novo Offers & Promotions” Tab', async ({ page }) => {
+  test('TC_12 – Verify “Learn More” Navigation from Offers in “Novo Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { normal } = parsedOffers;
     
@@ -184,10 +207,10 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, novoTab);
     
     await verifyLearnMoreNavigation(page, normal.slice(0, 2));
-    console.log('✅ TC10: Learn More navigation on Novo tab verified');
+    console.log('✅ TC12: Learn More navigation on Novo tab verified');
   });
 
-  test('TC_11 – Verify “Learn More” Navigation from Offers in “Bank Offers & Promotions” Tab', async ({ page }) => {
+  test('TC_13 – Verify “Learn More” Navigation from Offers in “Bank Offers & Promotions” Tab', async ({ page }) => {
     await navigateToOffers(page);
     const { bin } = parsedOffers;
     
@@ -195,6 +218,17 @@ expect(verifiedOffers.size).toBe(all.length);
     await switchTab(page, bankTab);
     
     await verifyLearnMoreNavigation(page, bin.slice(0, 2));
-    console.log('✅ TC11: Learn More navigation on Bank tab verified');
+    console.log('✅ TC13: Learn More navigation on Bank tab verified');
+  });
+
+  test('TC_14 – Verify “Learn More” Navigation from Offers in “Collectibles” Tab', async ({ page }) => {
+    await navigateToOffers(page);
+    const { collectible } = parsedOffers;
+    
+    const collectibleTab = page.getByRole('button', { name: 'Collectables' });
+    await switchTab(page, collectibleTab);
+    
+    await verifyLearnMoreNavigation(page, collectible.slice(0, 2));
+    console.log('✅ TC14: Learn More navigation on Collectables tab verified');
   });
 });

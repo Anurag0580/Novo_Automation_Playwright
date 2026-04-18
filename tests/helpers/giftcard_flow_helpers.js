@@ -18,6 +18,7 @@ async function loginAndCaptureToken(page) {
   }
 
   let authToken = null;
+  let userDetails = null;
 
   const tokenListener = (req) => {
     const headers = req.headers();
@@ -28,9 +29,27 @@ async function loginAndCaptureToken(page) {
 
   page.on('request', tokenListener);
 
+  const userDetailsPromise = page
+    .waitForResponse(
+      response =>
+        response.url().includes(`${BACKEND_URL}/api/user/user-details`) &&
+        response.status() === 200,
+      { timeout: 30000 }
+    )
+    .catch(() => null);
+
   await page.getByRole('textbox', { name: 'Enter your email' }).fill(EMAIL);
   await page.getByRole('textbox', { name: 'Enter your password' }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();
+
+  const userDetailsResponse = await userDetailsPromise;
+  if (userDetailsResponse) {
+    const requestHeaders = userDetailsResponse.request().headers();
+    if (!authToken && requestHeaders['authorization']?.startsWith('Bearer')) {
+      authToken = requestHeaders['authorization'];
+    }
+    userDetails = await parseUserDetailsResponse(userDetailsResponse);
+  }
 
   if (authToken) {
     await page.evaluate(([token]) => {
@@ -43,6 +62,7 @@ async function loginAndCaptureToken(page) {
   }
 
   page.off('request', tokenListener);
+  return { authToken, userDetails };
 }
 
 
@@ -69,15 +89,19 @@ async function getUserDetailsFromAPI(page) {
     res => res.url().includes(`${BACKEND_URL}/api/user/user-details`)&& res.status() === 200,
     { timeout: 30000 }
   );
-  
+
+  return parseUserDetailsResponse(response);
+}
+
+async function parseUserDetailsResponse(response) {
   const apiResponse = await response.json();
   if (!apiResponse.success || !apiResponse.data) {
     throw new Error('User details API response is invalid');
   }
-  
+
   const userData = apiResponse.data;
   const phoneWithoutCode = userData.user_contact.replace(/^\+\d{1,3}/, '');
-  
+
   return {
     email: userData.user_email,
     fullName: `${userData.user_first_name} ${userData.user_last_name}`,
@@ -92,11 +116,11 @@ async function getUserDetailsFromAPI(page) {
  * Navigate to gift card flow page
  */
 async function navigateToGiftCardFlow(page) {
-  await page.goto(`${BASE_URL}/home`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/home`, { waitUntil: 'domcontentloaded' });
   await page.getByRole('navigation').getByRole('button').filter({ hasText: /^$/ }).nth(2).click();
   await page.getByRole('link', { name: 'Gift Cards' }).click();
   await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 }
 
 /**

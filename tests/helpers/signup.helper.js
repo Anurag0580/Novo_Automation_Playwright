@@ -1,4 +1,55 @@
 import {expect} from '@playwright/test';
+
+const BASE_URL = process.env.PROD_FRONTEND_URL;
+const BACKEND_URL = process.env.PROD_BACKEND_URL;
+
+const Email = process.env.LOGIN_EMAIL;
+const Password = process.env.LOGIN_PASSWORD;
+const Phone = process.env.LOGIN_PHONE;
+
+async function dismissHomePopupIfPresent(page) {
+  const poster = page.getByRole('img', { name: 'Promotional Poster' }).first();
+  const closeBtn = page.getByRole('button', { name: 'Close popup' });
+
+  try {
+    await Promise.race([
+      poster.waitFor({ state: 'visible', timeout: 5000 }),
+      closeBtn.waitFor({ state: 'visible', timeout: 5000 })
+    ]);
+
+    const outsidePoints = [
+      { x: 20, y: 20 },
+      { x: 20, y: 120 }
+    ];
+
+    const box = await poster.boundingBox().catch(() => null);
+    if (box) {
+      outsidePoints.unshift({
+        x: Math.max(10, Math.floor(box.x / 2)),
+        y: Math.max(10, Math.floor(box.y / 2))
+      });
+    }
+
+    for (const point of outsidePoints) {
+      await page.mouse.click(point.x, point.y);
+      const stillVisible = await poster.isVisible().catch(() => false);
+      if (!stillVisible) {
+        return true;
+      }
+      await page.waitForTimeout(200);
+    }
+
+    if (await closeBtn.isVisible().catch(() => false)) {
+      await closeBtn.click();
+      await closeBtn.waitFor({ state: 'hidden', timeout: 5000 });
+      return true;
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
 import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
 /**
@@ -9,6 +60,7 @@ export async function navigateToSignup(page) {
     waitUntil: 'domcontentloaded'
   });
 
+  await dismissHomePopupIfPresent(page);
   await page.getByRole('navigation').getByRole('button').nth(1).click();
   await page.getByRole('button', { name: 'Sign Up' }).click();
 

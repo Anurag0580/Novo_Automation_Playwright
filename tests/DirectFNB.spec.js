@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/home-popup.fixture.js";
 import {
   createFBTracker,
   categorizeFandBItems,
@@ -33,7 +33,7 @@ test.describe(
       page,
       request,
     }) => {
-      await page.goto(`${BASE_URL}/home`, { waitUntil: "networkidle" });
+      await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
       const context = page.context();
 
       await context.grantPermissions(["geolocation"]);
@@ -42,7 +42,8 @@ test.describe(
         longitude: 72.8341961,
       });
 
-      await page.waitForURL(/novocinemas\.com\/home/, { timeout: 15000 });
+      await expect(page).toHaveURL(/\/home\/?(\?|#|$)/);
+
 
       await page.getByRole("button", { name: "Food & Beverages" }).click();
       await expect(

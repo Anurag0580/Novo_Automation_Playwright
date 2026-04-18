@@ -447,7 +447,79 @@ export function getDropdownLocators(page) {
     movie: page.locator("div").filter({ hasText: /^Movie$/ }).nth(1),
     cinema: page.locator("div").filter({ hasText: /^Cinema$/ }).nth(1),
     experience: page.locator("div").filter({ hasText: /^Experience$/ }).nth(1),
-    date: page.locator("div").filter({ hasText: /^Date$/ }).nth(1),
+    // The date trigger text changes from the placeholder ("Date") to the selected
+    // value (for example "Tue, Apr 14, 2026"), so the locator needs to support both.
+    date: page
+      .locator("div")
+      .filter({
+        hasText:
+          /^(Date|[A-Za-z]{3},\s[A-Za-z]{3}\s\d{1,2},\s\d{4})$/,
+      })
+      .nth(1),
     showtime: page.locator("div").filter({ hasText: /^Showtime$/ }).nth(1),
   };
+}
+
+
+//====================Popup Helpers====================
+export async function closePosterIfVisible(page) {
+  const posters = page.getByRole('img', { name: 'Promotional Poster' });
+  const poster = posters.first();
+  const closeBtn = page.getByRole('button', { name: 'Close popup' });
+
+  try {
+    await Promise.race([
+      poster.waitFor({ state: 'visible', timeout: 5000 }),
+      closeBtn.waitFor({ state: 'visible', timeout: 5000 }),
+    ]);
+
+    const posterVisible = await poster.isVisible().catch(() => false);
+    const closeVisible = await closeBtn.isVisible().catch(() => false);
+
+    if (!posterVisible && !closeVisible) {
+      return false;
+    }
+
+    console.log('❌ Promotional poster detected, trying outside click first');
+
+    const outsidePoints = [
+      { x: 20, y: 20 },
+      { x: 20, y: 120 },
+      { x: 120, y: 20 },
+    ];
+
+    if (posterVisible) {
+      const box = await poster.boundingBox();
+      if (box) {
+        outsidePoints.unshift(
+          { x: Math.max(10, Math.floor(box.x / 2)), y: Math.max(10, Math.floor(box.y / 2)) },
+          { x: Math.min(Math.floor(box.x + box.width + 20), 300), y: Math.max(10, Math.floor(box.y / 2)) }
+        );
+      }
+    }
+
+    for (const point of outsidePoints) {
+      await page.mouse.click(point.x, point.y);
+      const stillVisible = await poster.isVisible().catch(() => false);
+      if (!stillVisible) {
+        console.log('✅ Poster closed successfully');
+        return true;
+      }
+      await page.waitForTimeout(200);
+    }
+
+    if (closeVisible) {
+      console.log('⚠️ Outside click did not close popup, using close button fallback');
+      await closeBtn.click();
+    }
+
+    await poster.waitFor({ state: 'hidden', timeout: 5000 }).catch(async () => {
+      await closeBtn.waitFor({ state: 'hidden', timeout: 5000 });
+    });
+    console.log('✅ Poster closed successfully');
+    return true;
+  } catch {
+    console.log('ℹ️ No promotional popup present');
+    return false;
+  }
 }
