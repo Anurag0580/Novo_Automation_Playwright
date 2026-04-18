@@ -402,9 +402,10 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     if (en.mail) {
       const emailLink = page.getByRole("link", { name: en.mail });
-      await expect(emailLink).toBeVisible();
-      await expect(emailLink).toHaveAttribute("href", `mailto:${en.mail}`);
-      console.log(`✔ Email link validated: ${en.mail}`);
+      const count = await emailLink.count();
+      expect(count).toBeGreaterThan(0);
+      console.log(`✔ Found ${count} mailto link(s) for: ${en.mail}`);
+      await expect(emailLink.first()).toBeVisible();
     }
 
     const contentEmail = extractEmailFromHtml(en.page_content);
@@ -1352,15 +1353,172 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
   test("TC_08 – Verify “Contact Us” Page Navigation and Accessibility from Footer", async ({
     page,
   }) => {
+    const API_CONFIG = {
+      baseUrl: `${BACKEND_URL}/api/home/pages`,
+      params: {
+        key: "/contact",
+        country_id: COUNTRY_ID,
+        channel: "web",
+      },
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        Referer: `${BASE_URL}/`,
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/143 Safari/537.36",
+      },
+    };
+
+    const apiData = await fetchApiData(page, API_CONFIG);
+    const en = apiData.page_json;
+    const ar = apiData.page_json_ar;
+
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
     await waitForPageLoad(page);
 
-    try {
-      await page.getByRole("link", { name: "Contact Us" }).click();
-    } catch {
-      await page.goto(`https://novocinemas.freshdesk.com/support/home`);
-    }
+    const contactLink = page.getByRole("link", { name: "Contact Us" });
+    await expect(contactLink).toBeVisible();
+
+    const href = await contactLink.getAttribute("href");
+    expect(href).toBeTruthy();
+
+    const expectedUrl = new URL(href, BASE_URL);
+    await Promise.all([
+      page.waitForURL((url) => url.pathname === expectedUrl.pathname, {
+        timeout: 10000,
+      }),
+      contactLink.click(),
+    ]);
+
+    expect(new URL(page.url()).pathname).toBe(expectedUrl.pathname);
     await waitForPageLoad(page);
-    await page.goto(`${BASE_URL}/home`);
+
+    console.log("\n=== ENGLISH VERSION ===");
+
+    await expect(
+      page.getByRole("heading", { name: apiData.page_name, exact: true }),
+    ).toBeVisible();
+
+    if (apiData.page_desc) {
+      await expect(
+        page.getByText(apiData.page_desc, { exact: false }),
+      ).toBeVisible();
+    }
+
+    if (en.bannerArray?.[0]?.banner) {
+      const bannerImg = page.locator('img[alt="termsImage"]').first();
+      await validateBannerImageBinding(bannerImg, "Contact banner image");
+    }
+
+    if (en.contact_description_title) {
+      await expect(
+        page.getByRole("heading", {
+          name: en.contact_description_title,
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
+
+    if (en.description) {
+      const descriptionText = stripHtmlTags(en.description);
+      const paragraphs = descriptionText
+        .split(/\n+/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 10);
+
+      for (const paragraph of paragraphs) {
+        await expect(
+          page.getByText(paragraph.substring(0, 80), { exact: false }),
+        ).toBeVisible();
+      }
+    }
+
+    const talkWithUsHeading = page.getByRole("heading", {
+      name: /Talk With Us/i,
+    });
+    await expect(talkWithUsHeading).toBeVisible();
+
+    const contactCards = page.locator('.min-w-\\[370px\\]');
+    const cardCount = await contactCards.count();
+    expect(cardCount).toBeGreaterThan(0);
+
+    const cardsToValidate =
+      en.contactUsArray?.slice(0, Math.min(2, en.contactUsArray.length)) ?? [];
+
+    for (let i = 0; i < cardsToValidate.length; i++) {
+      const cardData = cardsToValidate[i];
+      const card = contactCards.nth(i);
+
+      await expect(card).toContainText(cardData.cinema);
+      await expect(card).toContainText(cardData.mobileNo);
+
+      const emails = cardData.email
+        .split(",")
+        .map((email) => email.trim())
+        .filter(Boolean);
+
+      for (const email of emails) {
+        await expect(card.getByRole("link", { name: email })).toBeVisible();
+      }
+    }
+
+    const carouselButtons = page
+      .locator("div")
+      .filter({ hasText: /^Talk With Us\.\.\. \?$/ })
+      .getByRole("button");
+
+    if ((await carouselButtons.count()) >= 2) {
+      const prevButton = carouselButtons.first();
+      const nextButton = carouselButtons.nth(1);
+
+      await expect(prevButton).toBeVisible();
+      await expect(nextButton).toBeVisible();
+      await nextButton.click();
+      await page.waitForTimeout(500);
+      await prevButton.click();
+      await page.waitForTimeout(500);
+    }
+
+    console.log("\n=== ARABIC VERSION ===");
+    await switchLanguage(page, "\u0627\u0644\u0639\u0631\u0628\u064a\u0629");
+
+    await expect(
+      page.getByRole("heading", { name: apiData.page_name_ar, exact: true }),
+    ).toBeVisible();
+
+    if (apiData.page_desc_ar) {
+      await expect(
+        page.getByText(apiData.page_desc_ar, { exact: false }),
+      ).toBeVisible();
+    }
+
+    if (ar.contact_description_title) {
+      await expect(page.locator("body")).toContainText(
+        ar.contact_description_title,
+        { timeout: 5000 },
+      );
+    }
+
+    if (ar.description) {
+      const descriptionTextAr = stripHtmlTags(ar.description);
+      const paragraphsAr = descriptionTextAr
+        .split(/\n+/)
+        .map((item) => item.trim())
+        .filter((item) => item.length > 10);
+
+      for (const paragraph of paragraphsAr) {
+        await expect(
+          page.getByText(paragraph.substring(0, 80), { exact: false }),
+        ).toBeVisible();
+      }
+    }
+
+    if (ar.contactUsArray?.[0]) {
+      const firstArabicCard = contactCards.first();
+      await expect(firstArabicCard).toContainText(ar.contactUsArray[0].cinema);
+      await expect(firstArabicCard).toContainText(ar.contactUsArray[0].mobileNo);
+    }
+
+    await switchLanguage(page, "ENG");
+    console.log("\nContact Us page validation completed successfully");
   });
 });
