@@ -15,6 +15,13 @@ import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./helpers/envConfig.js";
 let backendData;
 let parsedOffers;
 
+function skipWhenNoCollectibleOffers() {
+  test.skip(
+    !parsedOffers?.collectible?.length,
+    `No collectible offers returned by API for country_id=${COUNTRY_ID}; Collectables tab is not expected.`
+  );
+}
+
 test.beforeAll(async ({ request }) => {
   const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
   const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
@@ -88,8 +95,10 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
   });
 
   test('TC_05 – Verify “Collectible” Tab Displays Only Collectible Offers as per Backend Data', async ({ page }) => {
-    await navigateToOffers(page);
     const { normal, bin,collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);
@@ -177,8 +186,10 @@ expect(verifiedOffers.size).toBe(all.length);
   });
 
   test('TC_10 – Verify Offer Hover Details Are Displayed Correctly in “Collectibles” Tab', async ({ page }) => {
-    await navigateToOffers(page);
     const { collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);
@@ -222,8 +233,10 @@ expect(verifiedOffers.size).toBe(all.length);
   });
 
   test('TC_14 – Verify “Learn More” Navigation from Offers in “Collectibles” Tab', async ({ page }) => {
-    await navigateToOffers(page);
     const { collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);
