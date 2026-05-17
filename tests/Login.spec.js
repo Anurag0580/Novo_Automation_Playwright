@@ -88,6 +88,15 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
   test("TC_03_Verify OTP login initiation via WhatsApp using registered phone number", async ({
     page,
   }) => {
+    test.skip(
+      COUNTRY_ID === 2,
+      console.log("WhatsApp phone OTP login flow is not available for UAE.")
+    );
+    test.skip(
+      !Phone,
+      "LOGIN_PHONE is required for WhatsApp phone OTP login flow."
+    );
+
     let otpResponse;
 
     await page.route("**/api/auth/otp-login*", async (route) => {
@@ -102,13 +111,13 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
     await page.getByText("Sign in with OTP").click();
     await page
       .getByRole("textbox", { name: "Enter your Phone Number" })
-      .fill("9354286531");
+      .fill(Phone);
     await page.getByRole("button", { name: "Send OTP" }).click();
 
     await page.waitForResponse("**/api/auth/otp-login*");
 
     if (otpResponse.success) {
-      await expect(page.getByText("Please Check Your whatsapp")).toBeVisible();
+      await expect(page.getByText(/Please Check Your whatsapp/i)).toBeVisible();
     } else {
       await expect(page.getByText(otpResponse.message)).toBeVisible();
     }
@@ -128,8 +137,9 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
     await page.goto(`${BASE_URL}/home`);
     await openLoginPopup(page);
 
-    await page.getByText("Sign in with OTP").click();
-    await page.getByText("Want to SignIn with Email").click();
+    // await page.getByText("Sign in with OTP").click();
+    await page.getByText("Sign in with Email").click();
+    // await page.getByText("Want to SignIn with Email").click();
 
     await page
       .getByRole("textbox", { name: "Enter your registered email" })
