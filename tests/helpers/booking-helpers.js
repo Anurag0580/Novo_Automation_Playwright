@@ -3,7 +3,12 @@ import {
   BASE_URL,
   BACKEND_URL,
   COUNTRY_ID,
+  COUNTRY_NAME,
+  CURRENCY,
 } from "./envConfig.js";
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 
 const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
 const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
@@ -682,7 +687,9 @@ export async function getSeatLayout(page, request, sessionId, cinemaId) {
     { timeout: 10000 }
   );
   await expect(
-    page.getByText(new RegExp(`${layout.areas[0].name} \\(QAR`))
+    page.getByText(
+      new RegExp(`${escapeRegExp(layout.areas[0].name)} \\(${ESCAPED_CURRENCY}`)
+    )
   ).toBeVisible({ timeout: 10000 });
   await expect(
     page.getByText(`Screen ${layout.screenName}`, { exact: true })
@@ -855,7 +862,7 @@ export async function selectSeatsWithAreaCategory(page, layout, seatCount = 4) {
     "\nClicked Seats with Details:",
     Array.from(seatPriceMap.entries()).map(([seat, info]) => ({
       seat,
-      price: `QAR ${info.price}`,
+      price: `${CURRENCY} ${info.price}`,
       area: info.areaName,
       categoryCode: info.areaCategoryCode,
     }))
@@ -982,7 +989,7 @@ export async function verifyPricesInPanel(
   totalExpectedPrice
 ) {
   for (const [areaName, areaInfo] of areaGroupedSeats) {
-    const expectedPriceText = `QAR ${areaInfo.unitPrice.toFixed(2)} x ${
+    const expectedPriceText = `${CURRENCY} ${areaInfo.unitPrice.toFixed(2)} x ${
       areaInfo.count
     }`;
 
@@ -993,7 +1000,7 @@ export async function verifyPricesInPanel(
       console.log(`✓ Verified price for ${areaName}: ${expectedPriceText}`);
     } catch {
       const alternativePriceRegex = new RegExp(
-        `QAR\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
+        `${ESCAPED_CURRENCY}\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
           areaInfo.count
         }`
       );
@@ -1006,8 +1013,8 @@ export async function verifyPricesInPanel(
 
   const totalPriceFormatted =
     totalExpectedPrice % 1 === 0
-      ? `QAR ${Math.floor(totalExpectedPrice)}`
-      : `QAR ${totalExpectedPrice.toFixed(2)}`;
+      ? `${CURRENCY} ${Math.floor(totalExpectedPrice)}`
+      : `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`;
 
   try {
     await expect(page.locator("body")).toContainText(totalPriceFormatted, {
@@ -1017,12 +1024,14 @@ export async function verifyPricesInPanel(
   } catch {
     try {
       await expect(page.locator("body")).toContainText(
-        `QAR ${totalExpectedPrice.toFixed(2)}`,
+        `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`,
         { timeout: 5000 }
       );
       console.log(`✓ Verified total price (decimal format)`);
     } catch {
-      const priceRegex = new RegExp(`QAR\\s*${totalExpectedPrice}(?:\\.00)?`);
+      const priceRegex = new RegExp(
+        `${ESCAPED_CURRENCY}\\s*${totalExpectedPrice}(?:\\.00)?`
+      );
       await expect(page.locator("body")).toContainText(priceRegex, {
         timeout: 5000,
       });
@@ -1035,8 +1044,31 @@ export async function verifyPricesInPanel(
 // PAYMENT HELPERS
 // ============================================================================
 
+export async function verifyCyberSourceSdkLoaded(page) {
+  const cybersourceFrame = page.frameLocator('iframe[id="__buttonlist"]');
+  const checkoutButton = cybersourceFrame.getByRole("button", {
+    name: /Checkout with card/i,
+  });
+
+  await expect(checkoutButton).toBeVisible({ timeout: 15000 });
+
+  const incompatibleMessage = cybersourceFrame.getByText(
+    /Browser not compatible\.?/i
+  );
+  await expect(incompatibleMessage).toHaveCount(0, { timeout: 3000 });
+
+  console.log(
+    `✅ CyberSource SDK loaded successfully for ${COUNTRY_NAME}: checkout launcher is visible`
+  );
+}
+
 export async function completePayment(page) {
   try {
+    if (COUNTRY_ID === 2) {
+      await verifyCyberSourceSdkLoaded(page);
+      return;
+    }
+
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1100,9 +1132,11 @@ export async function fillPaymentDetails(page) {
 
 export async function verifyPaymentPageBasics(page, sidePanelApiData) {
   await expect(page).toHaveURL(/\/payment/);
-  await expect(
-    page.getByRole("heading", { name: "Payment Options" })
-  ).toBeVisible();
+  if (COUNTRY_ID !== 2) {
+    await expect(
+      page.getByRole("heading", { name: "Payment Options" })
+    ).toBeVisible();
+  }
 
   const paymentSidePanel = page
     .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1125,6 +1159,11 @@ export async function verifyPaymentPageBasics(page, sidePanelApiData) {
 
 export async function verifyCreditCardOption(page) {
   try {
+    if (COUNTRY_ID === 2) {
+      await verifyCyberSourceSdkLoaded(page);
+      return;
+    }
+
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1566,11 +1605,13 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
   await expect(appliedButton).toBeDisabled();
 
   // ------------------ Switch to Credit Card ------------------
-  const creditCardOption = page
-    .locator("div")
-    .filter({ hasText: /^Credit Card$/ })
-    .first();
-  await creditCardOption.click();
+  if (COUNTRY_ID !== 2) {
+    const creditCardOption = page
+      .locator("div")
+      .filter({ hasText: /^Credit Card$/ })
+      .first();
+    await creditCardOption.click();
+  }
   await completePayment(page);
 
   return {
