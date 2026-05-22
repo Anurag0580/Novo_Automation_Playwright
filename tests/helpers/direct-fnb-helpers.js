@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
+import { BASE_URL, BACKEND_URL, COUNTRY_ID, CURRENCY } from "./envConfig.js";
 
 export function createFBTracker() {
   return {
@@ -32,7 +32,7 @@ export function categorizeFandBItems(concessionsData) {
         item: item,
         itemName: item.extended_description || item.display_name || item.concession_item_name,
         itemPrice: item.price_in_cents / 100,
-        itemPriceDisplay: `QAR ${(item.price_in_cents / 100).toFixed(2)}`
+        itemPriceDisplay: `${CURRENCY} ${(item.price_in_cents / 100).toFixed(2)}`
       };
 
       if (item.AlternateItems && Array.isArray(item.AlternateItems) && item.AlternateItems.length > 0) {
@@ -99,7 +99,7 @@ export async function addFandBItemNoModifiers(page, itemInfo, fbTracker) {
 
   await page.waitForTimeout(500);
 
-  const priceText = itemPriceDisplay.replace('QAR ', '').trim();
+  const priceText = itemPriceDisplay.replace(`${CURRENCY} `, '').trim();
   
   let itemCard;
   let addButton;
@@ -283,8 +283,8 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
   const itemNameParts = itemName.split('\n');
   const mainItemName = itemNameParts[0].trim();
   const escapedMainName = mainItemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const priceText = itemPriceDisplay.replace('QAR ', '').trim();
-  const escapedPriceWithQAR = itemPriceDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const priceText = itemPriceDisplay.replace(`${CURRENCY} `, '').trim();
+  const escapedPriceWithCurrency = itemPriceDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   
   await page.waitForTimeout(500);
   
@@ -292,7 +292,7 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
   await itemNameLocator.scrollIntoViewIfNeeded();
   await expect(itemNameLocator).toBeVisible({ timeout: 10000 });
   
-  const addButtonLocator = page.locator('div').filter({ hasText: new RegExp(`^${escapedPriceWithQAR}Add$`, 'i') }).getByRole('button');
+  const addButtonLocator = page.locator('div').filter({ hasText: new RegExp(`^${escapedPriceWithCurrency}Add$`, 'i') }).getByRole('button');
   await expect(addButtonLocator.first()).toBeVisible({ timeout: 5000 });
   
   const itemCard = itemNameLocator.locator('xpath=ancestor::div[contains(@class, "relative") or contains(@class, "flex") or contains(@class, "border")][position()<=5]').first();
@@ -339,9 +339,18 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
 
       let selectedCount = 0;
       const selectedModifiers = [];
+      const modalRoot = page
+        .getByRole('heading', { name: new RegExp(mainItemName, 'i') })
+        .locator("xpath=ancestor::div[.//button[contains(normalize-space(), 'Add Item')]][1]");
+      const shuffledModifiers = [...modifierGroup.modifierItems].sort(
+        () => Math.random() - 0.5
+      );
 
-      while (selectedCount < requiredQuantity) {
-        const modifierToSelect = modifierGroup.modifierItems[Math.floor(Math.random() * modifierGroup.modifierItems.length)];
+      for (const modifierToSelect of shuffledModifiers) {
+        if (selectedCount >= requiredQuantity) {
+          break;
+        }
+
         const modifierId = modifierToSelect.vista_modifier_id || modifierToSelect.id;
         const modifierName = modifierToSelect.modifier_item_name || modifierToSelect.extended_description || modifierToSelect.description || modifierToSelect.display_name;
 
@@ -368,30 +377,32 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
 
         if (!modifierSelected && modifierName) {
           try {
-            const escapedModifierName = modifierName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            
-            const modifierTextLocator = page.getByText(new RegExp(escapedModifierName, 'i'));
-            const textCount = await modifierTextLocator.count();
-            
-            for (let i = 0; i < textCount; i++) {
-              const textElement = modifierTextLocator.nth(i);
-              await textElement.scrollIntoViewIfNeeded();
-              
-              const parentContainer = textElement.locator('xpath=ancestor::div[position()<=3]').first();
-              const containerText = await parentContainer.textContent().catch(() => '');
-              
-              if (containerText && containerText.includes(modifierName)) {
-                const addButton = parentContainer.getByRole('button', { name: /^Add$/i }).first();
-                if (await addButton.count() > 0) {
-                  await addButton.scrollIntoViewIfNeeded();
-                  await addButton.click({ timeout: 3000 });
-                  modifierSelected = true;
-                  break;
-                } else {
-                  await textElement.click({ timeout: 3000 });
-                  modifierSelected = true;
-                  break;
-                }
+            const normalizeText = (value) =>
+              value
+                .replace(/[^a-z0-9]+/gi, " ")
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase();
+            const normalizedModifierName = normalizeText(modifierName);
+            const addButtons = modalRoot.getByRole('button', { name: /^Add$/i });
+            const addButtonCount = await addButtons.count();
+
+            for (let i = 0; i < addButtonCount; i++) {
+              const rowAddButton = addButtons.nth(i);
+              const modifierRow = rowAddButton
+                .locator(
+                  "xpath=ancestor::div[.//*[contains(normalize-space(), 'Free')] and .//button[normalize-space()='Add']][1]"
+                )
+                .first();
+              const rowText = await modifierRow.textContent().catch(() => "");
+
+              if (normalizeText(rowText).includes(normalizedModifierName)) {
+                await rowAddButton.scrollIntoViewIfNeeded();
+                await expect(rowAddButton).toBeVisible({ timeout: 3000 });
+                await expect(rowAddButton).toBeEnabled({ timeout: 3000 });
+                await rowAddButton.click({ timeout: 3000 });
+                modifierSelected = true;
+                break;
               }
             }
           } catch {
@@ -403,12 +414,7 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
           selectedCount++;
           await page.waitForTimeout(500);
         } else {
-          console.warn(`Could not select modifier: ${modifierName}. Attempting next modifier...`);
-          if (selectedCount === 0 && modifierGroup.modifierItems.length > 1) {
-            continue;
-          } else {
-            break;
-          }
+          console.warn(`Could not select modifier: ${modifierName}. Trying next modifier...`);
         }
       }
 
@@ -419,7 +425,7 @@ export async function addFandBItemWithModifiers(page, itemInfo, fbTracker) {
   }
 
   await page.waitForTimeout(500);
-  const addItemButton = page.getByRole('button', { name: /Add Item QAR/i });
+  const addItemButton = page.getByRole('button', { name: new RegExp(`Add Item ${CURRENCY}`, 'i') });
   await addItemButton.scrollIntoViewIfNeeded();
   await expect(addItemButton).toBeVisible({ timeout: 5000 });
   await addItemButton.click();
@@ -446,9 +452,9 @@ export async function addFandBItemWithAlternates(page, itemInfo, fbTracker) {
   const itemNameParts = itemName.split('\n');
   const mainItemName = itemNameParts[0].trim();
   const escapedMainName = mainItemName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const priceText = itemPriceDisplay.replace('QAR ', '').trim();
+  const priceText = itemPriceDisplay.replace(`${CURRENCY} `, '').trim();
   const escapedPrice = priceText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const escapedPriceWithQAR = itemPriceDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedPriceWithCurrency = itemPriceDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   
   await page.waitForTimeout(500);
   
@@ -456,7 +462,7 @@ export async function addFandBItemWithAlternates(page, itemInfo, fbTracker) {
   await itemNameLocator.scrollIntoViewIfNeeded();
   await expect(itemNameLocator).toBeVisible({ timeout: 10000 });
   
-  const addButtonLocator = page.locator('div').filter({ hasText: new RegExp(`^${escapedPriceWithQAR}Add$`, 'i') }).getByRole('button');
+  const addButtonLocator = page.locator('div').filter({ hasText: new RegExp(`^${escapedPriceWithCurrency}Add$`, 'i') }).getByRole('button');
   await expect(addButtonLocator.first()).toBeVisible({ timeout: 5000 });
   
   const itemCard = itemNameLocator.locator('xpath=ancestor::div[contains(@class, "relative") or contains(@class, "flex") or contains(@class, "border")][position()<=5]').first();
@@ -527,14 +533,14 @@ export async function addFandBItemWithAlternates(page, itemInfo, fbTracker) {
 
       if (altSelected) {
         await page.waitForTimeout(500);
-        const addItemButton = page.getByRole('button', { name: /Add Item QAR/i });
+        const addItemButton = page.getByRole('button', { name: new RegExp(`Add Item ${CURRENCY}`, 'i') });
         await addItemButton.scrollIntoViewIfNeeded();
         await expect(addItemButton).toBeVisible({ timeout: 5000 });
         await addItemButton.click();
 
         const finalItemName = `${item.concession_item_name} - ${selectedAlt.alternate_item_name || altName}`;
         const altPrice = selectedAlt.price_in_cents / 100;
-        const altDisplayPrice = `QAR ${altPrice.toFixed(2)}`;
+        const altDisplayPrice = `${CURRENCY} ${altPrice.toFixed(2)}`;
 
         const concessionItemName = item.concession_item_name || itemName;
         fbTracker.addItem(finalItemName, altPrice, altDisplayPrice, concessionItemName);
@@ -544,7 +550,7 @@ export async function addFandBItemWithAlternates(page, itemInfo, fbTracker) {
     }
   }
 
-  await page.getByRole('button', { name: /Add Item QAR/i }).click();
+  await page.getByRole('button', { name: new RegExp(`Add Item ${CURRENCY}`, 'i') }).click();
   const concessionItemName = item.concession_item_name || itemName;
   fbTracker.addItem(itemName, itemInfo.itemPrice, itemPriceDisplay, concessionItemName);
   
@@ -711,9 +717,9 @@ export async function verifyFandBInSidePanel(page, fbTracker, selectedCinemaName
     // F&B label
 await expect(page.getByText('F&B', { exact: true })).toBeVisible({ timeout: 5000 });
 
-// F&B amount (+ QAR 49)
+// F&B amount
 const fbAmount = page.getByText(
-  new RegExp(`\\+\\s*QAR\\s*${fbTracker.totalPrice.toFixed(0)}`, 'i')
+  new RegExp(`\\+\\s*${CURRENCY}\\s*${fbTracker.totalPrice.toFixed(0)}`, 'i')
 );
 await expect(fbAmount).toBeVisible({ timeout: 5000 });
 
@@ -722,13 +728,13 @@ await expect(fbAmount).toBeVisible({ timeout: 5000 });
 await expect(page.getByText('Total Price', { exact: true }))
   .toBeVisible({ timeout: 5000 });
 
-// Total Price amount (QAR 49)
+// Total Price amount
 const totalAmount = page
   .locator('div')
-  .filter({ hasText: /^QAR\s*\d+/ })
+  .filter({ hasText: new RegExp(`^${CURRENCY}\\s*\\d+`) })
   .locator('span')
   .filter({
-    hasText: new RegExp(`^QAR\\s*${fbTracker.totalPrice.toFixed(0)}$`)
+    hasText: new RegExp(`^${CURRENCY}\\s*${fbTracker.totalPrice.toFixed(0)}$`)
   });
 
 await expect(totalAmount.first()).toBeVisible({ timeout: 5000 });

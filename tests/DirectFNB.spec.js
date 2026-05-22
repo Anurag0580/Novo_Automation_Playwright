@@ -24,6 +24,7 @@ import {
   BACKEND_URL,
   COUNTRY_ID,
   COUNTRY_NAME,
+  CURRENCY,
   FEATURES,
 } from "./helpers/envConfig.js";
 
@@ -276,7 +277,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -327,7 +328,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -378,7 +379,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${fbTracker.items[0].name}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -427,7 +428,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -462,18 +463,18 @@ test.describe(
       const expectedFBAmount = Math.round(fbTracker.totalPrice);
       const expectedDiscount = expectedFBAmount;
 
-      // --- F&B row (+ QAR XX) ---
+      // --- F&B row (+ ${CURRENCY} XX) ---
       await expect(page.getByText("F&B").nth(1)).toBeVisible();
 
-      await expect(page.getByText("+ QAR", { exact: false }).nth(1)).toHaveText(
-        `+ QAR ${expectedFBAmount}`,
+      await expect(page.getByText(`+ ${CURRENCY}`, { exact: false }).nth(1)).toHaveText(
+        `+ ${CURRENCY} ${expectedFBAmount}`,
       );
 
-      // --- Gift Card Discount row (- QAR XX) ---
+      // --- Gift Card Discount row (- ${CURRENCY} XX) ---
       await expect(page.getByText("Gift Card Discount").nth(1)).toBeVisible();
 
-      await expect(page.getByText("- QAR", { exact: false }).nth(1)).toHaveText(
-        `- QAR ${expectedDiscount}`,
+      await expect(page.getByText(`- ${CURRENCY}`, { exact: false }).nth(1)).toHaveText(
+        `- ${CURRENCY} ${expectedDiscount}`,
       );
 
       // --- Total Price label ---
@@ -488,7 +489,7 @@ test.describe(
       await expect(page.getByText("Total Price").nth(1)).toBeVisible();
 
       await expect(
-        page.getByText(`QAR ${expectedTotalPrice}`, { exact: true }).nth(1),
+        page.getByText(`${CURRENCY} ${expectedTotalPrice}`, { exact: true }).nth(1),
       ).toBeVisible();
 
       // ================= CONFIRM BOOKING BUTTON VALIDATION =================
@@ -515,7 +516,7 @@ test.describe(
         await expect(confirmBookingBtn).toBeDisabled();
 
         console.log(
-          `ℹ️ Confirm Booking disabled as Total Price = QAR ${expectedTotalPrice}`,
+          `ℹ️ Confirm Booking disabled as Total Price = ${CURRENCY} ${expectedTotalPrice}`,
         );
       }
 
@@ -544,7 +545,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -599,7 +600,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -634,15 +635,15 @@ test.describe(
       await expect(page.getByText("Gift Card Discount").nth(1)).toBeVisible();
 
       await expect(
-        page.getByText(`- QAR ${appliedAmountQAR}`, { exact: true }).nth(1),
+        page.getByText(`- ${CURRENCY} ${appliedAmountQAR}`, { exact: true }).nth(1),
       ).toBeVisible();
 
       await expect(
-        page.getByText(`QAR ${remainingAmountQAR}`, { exact: true }).nth(1),
+        page.getByText(`${CURRENCY} ${remainingAmountQAR}`, { exact: true }).nth(1),
       ).toBeVisible();
 
       console.log(
-        `✅ Side panel verified → Gift Card: QAR ${appliedAmountQAR}, Remaining: QAR ${remainingAmountQAR}`,
+        `✅ Side panel verified → Gift Card: ${CURRENCY} ${appliedAmountQAR}, Remaining: ${CURRENCY} ${remainingAmountQAR}`,
       );
 
       console.log("✅ Side panel price distribution verified successfully");
@@ -670,7 +671,7 @@ test.describe(
       await verifyFandBInSidePanel(page, fbTracker, selectedCinemaName);
 
       console.log(`\n✅ Successfully added: ${selectedItem.itemName}`);
-      console.log(`   Total: QAR ${fbTracker.totalPrice.toFixed(2)}`);
+      console.log(`   Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`);
 
       // ---- Capture only-concession POST API ----
       const onlyConcessionRequestPromise = page.waitForRequest(
@@ -706,18 +707,18 @@ test.describe(
       const expectedFBAmount = Math.round(fbTracker.totalPrice);
       const expectedDiscount = expectedFBAmount;
 
-      // --- F&B row (+ QAR XX) ---
+      // --- F&B row (+ ${CURRENCY} XX) ---
       await expect(page.getByText("F&B").nth(1)).toBeVisible();
 
-      await expect(page.getByText("+ QAR", { exact: false }).nth(1)).toHaveText(
-        `+ QAR ${expectedFBAmount}`,
+      await expect(page.getByText(`+ ${CURRENCY}`, { exact: false }).nth(1)).toHaveText(
+        `+ ${CURRENCY} ${expectedFBAmount}`,
       );
 
-      // --- Wallet Payment row (- QAR XX) ---
+      // --- Wallet Payment row (- ${CURRENCY} XX) ---
       await expect(page.getByText("Wallet Payment").nth(1)).toBeVisible();
 
-      await expect(page.getByText("- QAR", { exact: false }).nth(1)).toHaveText(
-        `- QAR ${expectedDiscount}`,
+      await expect(page.getByText(`- ${CURRENCY}`, { exact: false }).nth(1)).toHaveText(
+        `- ${CURRENCY} ${expectedDiscount}`,
       );
 
       // --- Total Price label ---
@@ -732,7 +733,7 @@ test.describe(
       await expect(page.getByText("Total Price").nth(1)).toBeVisible();
 
       await expect(
-        page.getByText(`QAR ${expectedTotalPrice}`, { exact: true }).nth(1),
+        page.getByText(`${CURRENCY} ${expectedTotalPrice}`, { exact: true }).nth(1),
       ).toBeVisible();
 
       // ================= CONFIRM BOOKING BUTTON VALIDATION =================
@@ -759,7 +760,7 @@ test.describe(
         await expect(confirmBookingBtn).toBeDisabled();
 
         console.log(
-          `ℹ️ Confirm Booking disabled as Total Price = QAR ${expectedTotalPrice}`,
+          `ℹ️ Confirm Booking disabled as Total Price = ${CURRENCY} ${expectedTotalPrice}`,
         );
       }
 
