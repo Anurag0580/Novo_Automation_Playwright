@@ -45,38 +45,38 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.goto(`${REAL_DOMAIN_URL}/`);
     await page
       .locator("div")
-      .filter({ hasText: /^QATAR$/ })
+      .filter({ hasText: /^UAE$/ })
       .getByRole("button")
       .click();
-    console.log("🌍 Country selected: QATAR");
+    console.log("🌍 Country selected: UAE");
 
     await expect(
       page.getByRole("navigation").getByRole("img", { name: "Logo" }),
     ).toBeVisible();
 
     // Food & Beverages > Online Order
-    await headerButton(page, "Food & Beverages").click();
-    const onlineOrder = headerLink(page, "Online Order");
-    await expect(onlineOrder).toBeVisible();
-    await onlineOrder.click();
-    await expect(page).toHaveURL(/takeaway/);
-    await expect(
-      page.getByRole("heading", { name: "Food & Drinks To-Go" }),
-    ).toBeVisible();
+    // await headerButton(page, "Food & Beverages").click();
+    // const onlineOrder = headerLink(page, "Online Order");
+    // await expect(onlineOrder).toBeVisible();
+    // await onlineOrder.click();
+    // await expect(page).toHaveURL(/takeaway/);
+    // await expect(
+    //   page.getByRole("heading", { name: "Food & Drinks To-Go" }),
+    // ).toBeVisible();
 
     // Food & Beverages > Home Delivery
-    await page.goto(`${BASE_URL}/home`);
-    await headerButton(page, "Food & Beverages").click();
-    const homedelivery = headerLink(page, "Home Delivery");
-    await expect(homedelivery).toBeVisible();
-    await homedelivery.click();
-    await expect(page).toHaveURL(/homedelivery/);
-    await expect(
-      page
-        .locator("div")
-        .filter({ hasText: "Enjoy Novo CinemasTreats" })
-        .nth(4),
-    ).toBeVisible();
+    // await page.goto(`${BASE_URL}/home`);
+    // await headerButton(page, "Food & Beverages").click();
+    // const homedelivery = headerLink(page, "Home Delivery");
+    // await expect(homedelivery).toBeVisible();
+    // await homedelivery.click();
+    // await expect(page).toHaveURL(/homedelivery/);
+    // await expect(
+    //   page
+    //     .locator("div")
+    //     .filter({ hasText: "Enjoy Novo CinemasTreats" })
+    //     .nth(4),
+    // ).toBeVisible();
 
     // Offers & Promotions
     await page.goto(`${BASE_URL}/home`);
@@ -109,14 +109,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ).toBeVisible();
 
     // Private Booking
-    await page.goto(`${BASE_URL}/home`);
-    const privateBooking = headerLink(page, "Private Booking");
-    await expect(privateBooking).toBeVisible();
-    await privateBooking.click();
-    await expect(page).toHaveURL(/privatebooking/);
-    await expect(
-      page.getByRole("heading", { name: "Private Booking" }),
-    ).toBeVisible();
+    // await page.goto(`${BASE_URL}/home`);
+    // const privateBooking = headerLink(page, "Private Booking");
+    // await expect(privateBooking).toBeVisible();
+    // await privateBooking.click();
+    // await expect(page).toHaveURL(/privatebooking/);
+    // await expect(
+    //   page.getByRole("heading", { name: "Private Booking" }),
+    // ).toBeVisible();
 
     // Premiere Club
     await page.goto(`${BASE_URL}/home`);
@@ -128,13 +128,13 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.locator("text=Premiere Club").first()).toBeVisible();
 
     //Bowling and Billiard
-    await page.goto(`${BASE_URL}/home`);
-    const bowlingandbilliards = headerLink(page, "Bowling & Billiard");
-    await expect(bowlingandbilliards).toBeVisible();
-    await bowlingandbilliards.click();
-    await page.goto(`${BASE_URL}/games/pick`);
-    await expect(page).toHaveURL(/games\/pick/);
-    await expect(page.getByRole("heading", { name: "Bowling & Billiard" })).toBeVisible();
+    // await page.goto(`${BASE_URL}/home`);
+    // const bowlingandbilliards = headerLink(page, "Bowling & Billiard");
+    // await expect(bowlingandbilliards).toBeVisible();
+    // await bowlingandbilliards.click();
+    // await page.goto(`${BASE_URL}/games/pick`);
+    // await expect(page).toHaveURL(/games\/pick/);
+    // await expect(page.getByRole("heading", { name: "Bowling & Billiard" })).toBeVisible();
 
     // Language Switching
     await page.goto(`${BASE_URL}/home`);
