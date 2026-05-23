@@ -28,6 +28,8 @@ import {
   BASE_URL,
   BACKEND_URL,
   COUNTRY_ID,
+  COUNTRY_NAME,
+  FEATURES,
 } from "./helpers/envConfig.js";
 
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
@@ -45,38 +47,50 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.goto(`${REAL_DOMAIN_URL}/`);
     await page
       .locator("div")
-      .filter({ hasText: /^UAE$/ })
+      .filter({ hasText: new RegExp(`^${COUNTRY_NAME}$`, "i") })
       .getByRole("button")
       .click();
-    console.log("🌍 Country selected: UAE");
+    console.log(`🌍 Country selected: ${COUNTRY_NAME}`);
 
     await expect(
       page.getByRole("navigation").getByRole("img", { name: "Logo" }),
     ).toBeVisible();
 
     // Food & Beverages > Online Order
-    // await headerButton(page, "Food & Beverages").click();
-    // const onlineOrder = headerLink(page, "Online Order");
-    // await expect(onlineOrder).toBeVisible();
-    // await onlineOrder.click();
-    // await expect(page).toHaveURL(/takeaway/);
-    // await expect(
-    //   page.getByRole("heading", { name: "Food & Drinks To-Go" }),
-    // ).toBeVisible();
+    if (FEATURES.directFnb) {
+      await headerButton(page, "Food & Beverages").click();
+      const onlineOrder = headerLink(page, "Online Order");
+      await expect(onlineOrder).toBeVisible();
+      await onlineOrder.click();
+      await expect(page).toHaveURL(/takeaway/);
+      await expect(
+        page.getByRole("heading", { name: "Food & Drinks To-Go" }),
+      ).toBeVisible();
+    } else {
+      console.log(
+        `⏭️ Skipping Food & Beverages > Online Order for country_id=${COUNTRY_ID}`,
+      );
+    }
 
     // Food & Beverages > Home Delivery
-    // await page.goto(`${BASE_URL}/home`);
-    // await headerButton(page, "Food & Beverages").click();
-    // const homedelivery = headerLink(page, "Home Delivery");
-    // await expect(homedelivery).toBeVisible();
-    // await homedelivery.click();
-    // await expect(page).toHaveURL(/homedelivery/);
-    // await expect(
-    //   page
-    //     .locator("div")
-    //     .filter({ hasText: "Enjoy Novo CinemasTreats" })
-    //     .nth(4),
-    // ).toBeVisible();
+    if (FEATURES.directFnb) {
+      await page.goto(`${BASE_URL}/home`);
+      await headerButton(page, "Food & Beverages").click();
+      const homedelivery = headerLink(page, "Home Delivery");
+      await expect(homedelivery).toBeVisible();
+      await homedelivery.click();
+      await expect(page).toHaveURL(/homedelivery/);
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: "Enjoy Novo CinemasTreats" })
+          .nth(4),
+      ).toBeVisible();
+    } else {
+      console.log(
+        `⏭️ Skipping Food & Beverages > Home Delivery for country_id=${COUNTRY_ID}`,
+      );
+    }
 
     // Offers & Promotions
     await page.goto(`${BASE_URL}/home`);
@@ -109,14 +123,18 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ).toBeVisible();
 
     // Private Booking
-    // await page.goto(`${BASE_URL}/home`);
-    // const privateBooking = headerLink(page, "Private Booking");
-    // await expect(privateBooking).toBeVisible();
-    // await privateBooking.click();
-    // await expect(page).toHaveURL(/privatebooking/);
-    // await expect(
-    //   page.getByRole("heading", { name: "Private Booking" }),
-    // ).toBeVisible();
+    if (COUNTRY_ID !== 2) {
+      await page.goto(`${BASE_URL}/home`);
+      const privateBooking = headerLink(page, "Private Booking");
+      await expect(privateBooking).toBeVisible();
+      await privateBooking.click();
+      await expect(page).toHaveURL(/privatebooking/);
+      await expect(
+        page.getByRole("heading", { name: "Private Booking" }),
+      ).toBeVisible();
+    } else {
+      console.log(`⏭️ Skipping Private Booking for country_id=${COUNTRY_ID}`);
+    }
 
     // Premiere Club
     await page.goto(`${BASE_URL}/home`);
@@ -127,14 +145,22 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page).toHaveURL(/premiereclub/);
     await expect(page.locator("text=Premiere Club").first()).toBeVisible();
 
-    //Bowling and Billiard
-    // await page.goto(`${BASE_URL}/home`);
-    // const bowlingandbilliards = headerLink(page, "Bowling & Billiard");
-    // await expect(bowlingandbilliards).toBeVisible();
-    // await bowlingandbilliards.click();
-    // await page.goto(`${BASE_URL}/games/pick`);
-    // await expect(page).toHaveURL(/games\/pick/);
-    // await expect(page.getByRole("heading", { name: "Bowling & Billiard" })).toBeVisible();
+    // Bowling and Billiard
+    if (FEATURES.games) {
+      await page.goto(`${BASE_URL}/home`);
+      const bowlingandbilliards = headerLink(page, "Bowling & Billiard");
+      await expect(bowlingandbilliards).toBeVisible();
+      await bowlingandbilliards.click();
+      await page.goto(`${BASE_URL}/games/pick`);
+      await expect(page).toHaveURL(/games\/pick/);
+      await expect(
+        page.getByRole("heading", { name: "Bowling & Billiard" }),
+      ).toBeVisible();
+    } else {
+      console.log(
+        `⏭️ Skipping Bowling & Billiard for country_id=${COUNTRY_ID}`,
+      );
+    }
 
     // Language Switching
     await page.goto(`${BASE_URL}/home`);
@@ -144,7 +170,9 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.getByRole("navigation")).toContainText(
       "العروض الترويجية",
     );
-    await expect(page.getByRole("navigation")).toContainText("الحجوزات الخاصة");
+    await expect(page.getByRole("navigation")).toContainText("التجارب");
+    await expect(page.getByRole("navigation")).toContainText("المواقع");
+    await expect(page.getByRole("navigation")).toContainText("نادي بريميير");
 
     await headerButton(page, "ENG").click({ force: true });
     console.log("✅ TC001 COMPLETED");
@@ -568,9 +596,16 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       expect(response.ok()).toBeTruthy();
 
       const data = await response.json();
-      apiItems = data.data || [];
+      apiItems = Array.isArray(data.data) ? data.data : [];
     });
     console.log(`📦 Trending items received from API: ${apiItems.length}`);
+
+    if (apiItems.length === 0) {
+      const skipMessage =
+        `Skipping TC008: Trending at Novo section is not shown because trending API returned no data for country_id=${COUNTRY_ID}`;
+      console.log(skipMessage);
+      test.skip(true, skipMessage);
+    }
 
     await test.step("Load homepage", async () => {
       await page.goto(`${BASE_URL}/home`);
@@ -909,7 +944,15 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         })
         .first(),
     ).toBeVisible();
-    await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
+
+    // Footer: country-specific heading/text differences
+    if (COUNTRY_ID === 2) {
+      // UAE: heading present
+      await expect(page.getByRole("heading", { name: "Ways To Book" })).toBeVisible();
+    } else {
+      // Default: combined text present
+      await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
+    }
 
     // Test mobile app download links
     const appLinks = [
@@ -933,28 +976,37 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     }
     console.log("🔗 Social media links validated");
 
-    await expect(
-      page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
-    ).toBeVisible();
-    await expect(
-      page
+    // Qatar-specific footer links (not available in UAE)
+    if (COUNTRY_ID !== 2) {
+      await expect(
+        page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("contentinfo")
+          .getByRole("link", { name: "Need Assistance ?" }),
+      ).toBeVisible();
+
+      const assistancePagePromise = page.waitForEvent("popup");
+      await page
         .getByRole("contentinfo")
-        .getByRole("link", { name: "Need Assistance ?" }),
-    ).toBeVisible();
+        .getByRole("link", { name: "Need Assistance ?" })
+        .click();
+      const assistancePage = await assistancePagePromise;
+      await expect(assistancePage.url()).toContain(
+        "https://novocinemas.freshdesk.com/support/home",
+      );
+      await assistancePage.close();
 
-    const assistancePagePromise = page.waitForEvent("popup");
-    await page
-      .getByRole("contentinfo")
-      .getByRole("link", { name: "Need Assistance ?" })
-      .click();
-    const assistancePage = await assistancePagePromise;
-    await expect(assistancePage.url()).toContain(
-      "https://novocinemas.freshdesk.com/support/home",
-    );
-    await assistancePage.close();
+      // Qatar-specific contact info
+      await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
+      await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
+    } else {
+      // UAE-specific contact info
+      await expect(page.getByText("Email Uscustomerservice@")).toBeVisible();
+      await expect(page.getByText("Find Us HereCayan Business")).toBeVisible();
+    }
 
-    await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
-    await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
     await expect(
       page
         .locator("div")
@@ -963,24 +1015,47 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ).toBeVisible();
 
     // Test social media links
-    const socialLinks = [
-      {
-        selector: ".flex.items-center.justify-center.w-8.h-8",
-        expectedUrl: "https://www.facebook.com/novocinemasQTR",
-      },
-      {
-        selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
-        expectedUrl: "https://www.youtube.com/@Novocinemas",
-      },
-      {
-        selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
-        expectedUrl: "https://www.instagram.com/novocinemas_qtr",
-      },
-      {
-        selector: ".flex.gap-x-2 > a:nth-child(4)",
-        expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
-      },
-    ];
+    let socialLinks = [];
+
+    if (COUNTRY_ID !== 2) {
+      socialLinks = [
+        {
+          selector: ".flex.items-center.justify-center.w-8.h-8",
+          expectedUrl: "https://www.facebook.com/novocinemasQTR",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
+          expectedUrl: "https://www.youtube.com/@Novocinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
+          expectedUrl: "https://www.instagram.com/novocinemas_qtr",
+        },
+        {
+          selector: ".flex.gap-x-2 > a:nth-child(4)",
+          expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
+        },
+      ];
+    } else {
+      socialLinks = [
+        {
+          selector: ".flex.items-center.justify-center.w-8.h-8",
+          expectedUrl: "https://www.facebook.com/novocinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
+          expectedUrl: "https://www.youtube.com/user/NovoCinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
+          expectedUrl: "https://www.instagram.com/NovoCinemas",
+        },
+        {
+          selector: ".flex.gap-x-2 > a:nth-child(4)",
+          expectedUrl: "https://x.com/NovoCinemas",
+        },
+      ];
+    }
 
     for (let i = 0; i < socialLinks.length; i++) {
       const socialPagePromise = page.waitForEvent("popup");
@@ -989,6 +1064,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       await expect(socialPage.url()).toContain(
         socialLinks[i].expectedUrl.split("?")[0],
       );
+      console.log(`🔗 Social media link ${i + 1} validated: ${socialLinks[i].expectedUrl}`);
       await socialPage.close();
     }
 
