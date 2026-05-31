@@ -221,7 +221,20 @@ export function setupValidationInterceptors(page) {
   return { panEntriesPromise, offerValidatePromise };
 }
 
-export function generateCardNumber() {
+export function setupDibsyPublicKeyInterceptor(page) {
+  if (COUNTRY_ID === 2) {
+    return null;
+  }
+
+  return page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/payment/dibsy/public-key/") &&
+      response.status() === 200,
+    { timeout: 30000 }
+  );
+}
+
+export function generateCardNumber(cardBin = PRIMARY_BANK_OFFER.cardBin) {
   const p =
     "552400" +
     Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join("");
@@ -237,16 +250,34 @@ export function generateCardNumber() {
 export async function validateCard(
   page,
   panEntriesPromise,
-  offerValidatePromise
+  offerValidatePromise,
+  cardBin = PRIMARY_BANK_OFFER.cardBin,
+  dibsyPublicKeyPromise = null,
+  offerPanel = page
 ) {
   const cardNumber = generateCardNumber();
   console.log("Generated card number:", cardNumber);
 
-  await page
+  await offerPanel
     .getByRole("textbox", { name: "Enter Card Number" })
+    .first()
     .fill(cardNumber);
-  await page.getByRole("button", { name: "Validate" }).click();
+  await offerPanel.getByRole("button", { name: "Validate" }).first().click();
   await page.waitForTimeout(1000);
+
+  if (dibsyPublicKeyPromise) {
+    const dibsyResponse = await dibsyPublicKeyPromise;
+    const dibsyPublicKeyData = await dibsyResponse.json();
+
+    await page.evaluate(
+      ([publicKeyData]) => {
+        localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
+        localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
+        localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
+      },
+      [dibsyPublicKeyData]
+    );
+  }
 
   let panEntriesData = null;
   try {
@@ -356,27 +387,43 @@ export async function verifyOfferAppliedUI(page, offerValidationData) {
   }
 }
 
-export async function validateCardFlow(page) {
-  await expect(page.getByText("CBQ Offer").nth(1)).toBeVisible({
-    timeout: 10000,
-  });
-  await page.getByRole("button", { name: "See More" }).click();
-  await page.getByRole("button", { name: "Terms & Conditions" }).click();
-  await page
-    .locator("div")
-    .filter({ hasText: /^Terms & Conditions:$/ })
-    .getByRole("button")
-    .click();
+async function ensureBankOfferCardFormVisible(page) {
+  const offerToggle = page
+    .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
+    .first();
+
+  await expect(offerToggle).toBeVisible({ timeout: 10000 });
+
+  if ((await offerToggle.getAttribute("aria-expanded")) !== "true") {
+    await offerToggle.click();
+  }
+
+  const offerPanel = offerToggle.locator(
+    'xpath=ancestor::div[.//input[@placeholder="Enter Card Number"] and .//button[normalize-space()="Validate"]][1]'
+  );
+  const cardNumberInput = offerPanel
+    .getByRole("textbox", { name: "Enter Card Number" })
+    .first();
+
+  await expect(cardNumberInput).toBeVisible({ timeout: 10000 });
+  return offerPanel;
+}
+
+export async function validateCardFlow(page, dibsyPublicKeyPromise = null) {
   await expect(
-    page.getByRole("textbox", { name: "Enter Card Number" })
+    page.getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName }).first()
   ).toBeVisible({ timeout: 10000 });
+  const offerPanel = await ensureBankOfferCardFormVisible(page);
 
   const { panEntriesPromise, offerValidatePromise } =
     setupValidationInterceptors(page);
   const { panEntriesData, offerValidationData } = await validateCard(
     page,
     panEntriesPromise,
-    offerValidatePromise
+    offerValidatePromise,
+    PRIMARY_BANK_OFFER.cardBin,
+    dibsyPublicKeyPromise,
+    offerPanel
   );
 
   await storeOfferValidationData(page, offerValidationData);
@@ -395,29 +442,17 @@ export async function validateCardFlow(page) {
 export async function handleBankOffersFlow(page, request, sessionId, cinemaId) {
   await verifyBankOffers(page, request, sessionId, cinemaId);
 
-  const dibsyPublicKeyPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/payment/dibsy/public-key/") &&
-      response.status() === 200,
-    { timeout: 15000 }
+  const dibsyPublicKeyPromise = setupDibsyPublicKeyInterceptor(page);
+
+  await page
+    .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
+    .first()
+    .click();
+  console.log(
+    `Clicked ${PRIMARY_BANK_OFFER.name} - continuing to card validation flow...`
   );
 
-  await page.getByRole("button", { name: "CBQ Offer Logo CBQ Offer" }).click();
-  console.log("Clicked CBQ Offer - waiting for Dibsy API...");
-
-  const dibsyResponse = await dibsyPublicKeyPromise;
-  const dibsyPublicKeyData = await dibsyResponse.json();
-
-  await page.evaluate(
-    ([publicKeyData]) => {
-      localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
-      localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
-      localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
-    },
-    [dibsyPublicKeyData]
-  );
-
-  await validateCardFlow(page);
+  await validateCardFlow(page, dibsyPublicKeyPromise);
 }
 
 export function setupPaymentInterceptors(page) {
