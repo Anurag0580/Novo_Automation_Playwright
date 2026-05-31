@@ -137,9 +137,13 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
     await page.goto(`${BASE_URL}/home`);
     await openLoginPopup(page);
 
-    // await page.getByText("Sign in with OTP").click();
-    await page.getByText("Sign in with Email").click();
-    // await page.getByText("Want to SignIn with Email").click();
+    if (COUNTRY_ID !== 2) {
+      await page.getByText("Sign in with OTP").click();
+      await page.getByText("Want to SignIn with Email").click();
+    } else { 
+      await page.getByText("Sign in with Email").click();
+    }
+  
 
     await page
       .getByRole("textbox", { name: "Enter your registered email" })
