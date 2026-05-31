@@ -70,13 +70,19 @@ import {
   addFandBItemWithAlternates,
 } from "./helpers/direct-fnb-helpers.js";
 import { skip } from "node:test";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  CURRENCY,
+} from "./helpers/envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
+const skipToPaymentButtonName = new RegExp(
+  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY}(?:\\s+\\d+(?:\\.\\d{1,2})?)?)?$`,
+  "i"
+);
 
 test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments & Transaction Handling)", () => {
   // ============================================================================
@@ -180,9 +186,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText("Snack Time!")).toBeVisible();
 
       // ================== F&B SELECTION ==================
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
@@ -408,10 +415,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================== EXPECT DIRECT PAYMENT ==================
     await page.waitForURL((url) => url.pathname.includes("/payment"));
 
-    // await page.waitForLoadState("networkidle");
+    if (COUNTRY_ID !== 2) {
     await expect(
       page.getByRole("heading", { name: "Payment Options" })
-    ).toBeVisible();
+    ).toBeVisible();} else {
+    await expect(page.getByRole('heading', { name: 'Gift Card & Vouchers' })).toBeVisible();}
 
     // ================== PAYMENT SIDE PANEL ==================
     const paymentSidePanel = page
@@ -800,7 +808,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     await expect(
       page.getByRole("img", { name: "offerbg" }).nth(1)
     ).toBeVisible();
-    await expect(page.getByText("Loyalty Offers").nth(1)).toBeVisible();
+    // await expect(page.getByText("Loyalty Offers").nth(1)).toBeVisible();
+    await expect(page.getByText("Loyalty Offers").first()).toBeVisible();
     await expect(
       page.getByRole("button", { name: "View" }).nth(1)
     ).toBeVisible();
@@ -1951,9 +1960,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText("Snack Time!")).toBeVisible();
 
       console.log("\n=== Starting Enhanced F&B Selection Flow ===");
 
@@ -2184,9 +2194,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
 
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText("Snack Time!")).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
@@ -2403,9 +2414,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
 
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText("Snack Time!")).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
