@@ -66,6 +66,10 @@ async function loginAndCaptureToken(page) {
     await page.reload({ waitUntil: 'networkidle' });
   }
 
+  await page
+    .waitForURL(url => url.href !== startingUrl, { timeout: 15000 })
+    .catch(() => null);
+
   page.off('request', tokenListener);
   return { authToken, userDetails };
 }
@@ -178,7 +182,26 @@ async function verifyOrderSummary(page, testData) {
 async function selectGiftCard(page, price, currency = 'QAR') {
   await expect(page.getByText('Customize your Gift Card')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Price:')).toBeVisible();
-  await page.getByRole('button', { name: `${currency} ${price}` }).click();
+
+  let selectedPrice = String(price);
+  if (price) {
+    await page.getByRole('button', { name: `${currency} ${price}` }).click();
+  } else {
+    const priceInput = page.getByRole('spinbutton').first();
+    await expect(priceInput).toBeVisible();
+    selectedPrice = await priceInput.inputValue();
+  }
+
+  const quantityInput = page.getByRole('spinbutton').nth(1);
+  await expect(quantityInput).toBeVisible();
+  await quantityInput.fill(String(quantity));
+
+  return {
+    price: selectedPrice,
+    currency,
+    quantity,
+    actionLocator: page.getByRole('button', { name: 'Next' }).first(),
+  };
 }
 
 /**
