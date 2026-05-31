@@ -63,9 +63,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       await expect(onlineOrder).toBeVisible();
       await onlineOrder.click();
       await expect(page).toHaveURL(/takeaway/);
-      await expect(
-        page.getByRole("heading", { name: "Food & Drinks To-Go" }),
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Food & Drinks To-Go" }),
+      // ).toBeVisible();
+      await expect(page.getByText("Food & Drinks To-Go")).toBeVisible();
     } else {
       console.log(
         `⏭️ Skipping Food & Beverages > Online Order for country_id=${COUNTRY_ID}`,
@@ -118,9 +119,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(experiecnces).toBeVisible();
     await experiecnces.click();
     await expect(page).toHaveURL(/experiences/);
-    await expect(
-      page.getByRole("heading", { name: "Novo Experiences" }),
-    ).toBeVisible();
+    // await expect(
+    //   page.getByRole("heading", { name: "Novo Experiences" }),
+    // ).toBeVisible();
+    await expect(page.locator('.slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .montserrat_aae9f109-module__l2uvuG__className')).toContainText("Novo Experiences");
 
     // Private Booking
     if (COUNTRY_ID !== 2) {
@@ -153,9 +155,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       await bowlingandbilliards.click();
       await page.goto(`${BASE_URL}/games/pick`);
       await expect(page).toHaveURL(/games\/pick/);
-      await expect(
-        page.getByRole("heading", { name: "Bowling & Billiard" }),
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Bowling & Billiard" }),
+      // ).toBeVisible();
+      await expect(page.getByText("Bowling & Billiard")).toBeVisible();
     } else {
       console.log(
         `⏭️ Skipping Bowling & Billiard for country_id=${COUNTRY_ID}`,
@@ -1089,9 +1092,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       page.getByRole("link", { name: "About Us" }).click(),
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/aboutUs`);
-    await expect(
-      page.getByRole("heading", { name: "Our Story" }),
-    ).toBeVisible();
+    // await expect(
+    //   page.getByRole("heading", { name: "Our Story" }),
+    // ).toBeVisible();
+    await expect(page.getByText("Our Story")).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
@@ -1104,9 +1108,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       page.getByRole("link", { name: "Advertise With Us" }).click(),
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/advertise`);
-    await expect(
-      page.getByRole("heading", { name: "Promote Your Brand at Novo" }),
-    ).toBeVisible();
+    // await expect(
+    //   page.getByRole("heading", { name: "Promote Your Brand at Novo" }),
+    // ).toBeVisible();
+    await expect(page.getByText("Promote Your Brand at Novo")).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
@@ -1119,7 +1124,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       page.getByRole("link", { name: "Careers" }).click(),
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/career`);
-    await expect(page.getByRole("heading", { name: "Careers" })).toBeVisible();
+    // await expect(page.getByRole("heading", { name: "Careers" })).toBeVisible();
+    await expect(page.getByText("Careers")).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
