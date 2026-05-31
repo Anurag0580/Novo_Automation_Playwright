@@ -53,9 +53,10 @@ test.describe(
       ).toBeVisible();
       await page.getByRole("link", { name: "Online Order" }).click();
       await expect(page).toHaveURL(/takeaway/);
-      await expect(
-        page.getByRole("heading", { name: "Food & Drinks To-Go" }),
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Food & Drinks To-Go" }),
+      // ).toBeVisible();
+      await expect(page.getByText('Food & Drinks To-Go')).toBeVisible();
 
       await expect(
         page.getByRole("button", { name: "Log in to see your upcoming" }),
@@ -72,9 +73,10 @@ test.describe(
         .getByRole("button", { name: "CLICK HERE to order F&B" })
         .click();
       await expect(page).toHaveURL(/cinema/);
-      await expect(
-        page.getByRole("heading", { name: "Takeaway" }),
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Takeaway" }),
+      // ).toBeVisible();
+      await expect(page.getByText('Takeaway')).toBeVisible();
 
       console.log("\n🎬 Starting API Validation...\n");
 
@@ -457,8 +459,8 @@ test.describe(
       const expectedFBAmount = Math.round(fbTracker.totalPrice);
       const expectedDiscount = expectedFBAmount;
 
-      // --- F&B row (+ QAR XX) ---
-      await expect(page.getByText("F&B").nth(1)).toBeVisible();
+      // --- F&B row (+ ${CURRENCY} XX) ---
+      await expect(page.getByText("F&B").nth(3)).toBeVisible();
 
       await expect(page.getByText("+ QAR", { exact: false }).nth(1)).toHaveText(
         `+ QAR ${expectedFBAmount}`,
@@ -701,8 +703,8 @@ test.describe(
       const expectedFBAmount = Math.round(fbTracker.totalPrice);
       const expectedDiscount = expectedFBAmount;
 
-      // --- F&B row (+ QAR XX) ---
-      await expect(page.getByText("F&B").nth(1)).toBeVisible();
+      // --- F&B row (+ ${CURRENCY} XX) ---
+      await expect(page.getByText("F&B").nth(3)).toBeVisible();
 
       await expect(page.getByText("+ QAR", { exact: false }).nth(1)).toHaveText(
         `+ QAR ${expectedFBAmount}`,

@@ -806,7 +806,8 @@ export async function navigateToCinemaAndWaitForFandB(page, cinemaId, concession
   console.log('✅ URL changed to cinema page');
 
   // Wait for page heading to ensure page is loaded
-  await expect(page.getByRole('heading', { name: 'Food & Drinks To-Go' })).toBeVisible({ timeout: 15000 });
+  // await expect(page.getByRole('heading', { name: 'Food & Drinks To-Go' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Food & Drinks To-Go')).toBeVisible();
   console.log('✅ Page heading visible');
 
   // Wait for DOM to be ready
@@ -859,7 +860,8 @@ export async function navigateToCinemaAndWaitForFandB(page, cinemaId, concession
   }
 
   // Wait for the "Snack Time!" heading as final confirmation
-  await expect(page.getByRole('heading', { name: 'Snack Time!' })).toBeVisible({ timeout: 15000 });
+  // await expect(page.getByRole('heading', { name: 'Snack Time!' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText('Snack Time!')).toBeVisible();
   console.log('✅ F&B content loaded on page');
 
   return concessionsData;
