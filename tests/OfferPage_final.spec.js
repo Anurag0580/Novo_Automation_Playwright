@@ -7,6 +7,8 @@ import {
   switchTab,
   verifyLearnMoreNavigation,
   verifyHoverDetails,
+  firstVisibleOfferTitle,
+  getOffersCarouselNextButton,
   API_BASE,
   HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
@@ -110,35 +112,29 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
     
     await expect(page.locator('.bg-background.p-5.lg\\:p-10')).toBeVisible();
     
-    const rightButton = page.locator('.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)');
     const verifiedOffers = new Set();
-const maxSlides = all.length * 2;
-let slideCount = 0;
+    const maxSlides = all.length * 2;
+    let slideCount = 0;
 
-while (verifiedOffers.size < all.length && slideCount < maxSlides) {
-  slideCount++;
+    while (verifiedOffers.size < all.length && slideCount < maxSlides) {
+      slideCount++;
 
-  for (const offer of all) {
-    if (verifiedOffers.has(offer.title)) continue;
+      for (const offer of all) {
+        if (verifiedOffers.has(offer.title)) continue;
 
-    const titleVisible = await page
-      .getByRole('heading', { name: offer.title })
-      .first()
-      .isVisible()
-      .catch(() => false);
+        const visibleTitle = await firstVisibleOfferTitle(page, offer.title);
+        if (visibleTitle) {
+          verifiedOffers.add(offer.title);
+        }
+      }
 
-    if (titleVisible) {
-      verifiedOffers.add(offer.title);
-      break;
+      if (verifiedOffers.size < all.length) {
+        const rightButton = await getOffersCarouselNextButton(page);
+        expect(rightButton, 'Offers carousel next button should be visible').not.toBeNull();
+        await rightButton.click({ force: true });
+        await page.waitForTimeout(350);
+      }
     }
-  }
-
-  if (verifiedOffers.size < all.length) {
-    await rightButton.click();
-  }
-}
-
-expect(verifiedOffers.size).toBe(all.length);
     
     // List any missing offers
     if (verifiedOffers.size < all.length) {

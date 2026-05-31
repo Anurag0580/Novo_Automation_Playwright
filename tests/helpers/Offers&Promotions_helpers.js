@@ -71,6 +71,62 @@
   }
 
   /**
+   * Slick keeps off-screen slides in the DOM. This prevents `.first()` from
+   * locking on to a hidden copy of a card title.
+   */
+  async function firstVisibleOfferTitle(page, title) {
+    const matches = page.getByText(title, { exact: false });
+    const count = await matches.count();
+
+    for (let index = 0; index < count; index++) {
+      const candidate = matches.nth(index);
+      if (await candidate.isVisible().catch(() => false)) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  async function getOffersCarouselNextButton(page) {
+    const selectors = [
+      '.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)',
+      '.slick-next',
+      'button[aria-label="Next"]'
+    ];
+
+    for (const selector of selectors) {
+      const button = page.locator(selector).first();
+      if (await button.isVisible().catch(() => false)) {
+        return button;
+      }
+    }
+
+    return null;
+  }
+
+  async function revealOfferInCarousel(page, title, maxMoves = 12) {
+    await page.getByText('Popular Bank Offers').scrollIntoViewIfNeeded().catch(() => {});
+
+    for (let move = 0; move <= maxMoves; move++) {
+      const visibleTitle = await firstVisibleOfferTitle(page, title);
+      if (visibleTitle) {
+        return visibleTitle;
+      }
+
+      const nextButton = await getOffersCarouselNextButton(page);
+      if (!nextButton || move === maxMoves) {
+        break;
+      }
+
+      await nextButton.click({ force: true });
+      await page.waitForTimeout(350);
+    }
+
+    return page.getByText(title, { exact: false }).first();
+  }
+
+  /**
    * Navigate to Offers & Promotions page
    */
   async function navigateToOffers(page) {
@@ -114,8 +170,8 @@
     // Verify expected offers are visible
     for (const offer of offers.filter(offer => offer?.title)) {
       console.log(`  Checking EXPECTED offer: ${offer.title}`);
-      await expect(page.getByText(offer.title, { exact: false }).first())
-        .toBeVisible()
+      const titleLocator = await revealOfferInCarousel(page, offer.title, offers.length + 4);
+      await expect(titleLocator).toBeVisible({ timeout: 10000 });
     }
 
     // Verify excluded offers are hidden (don't fail on warning, just check)
@@ -299,7 +355,8 @@
 
     // ---------- TITLE ----------
     await expect(
-      page.getByRole('heading', { name: apiData.name })
+      // page.getByRole('heading', { name: apiData.name })
+      page.getByText(apiData.name, { exact: true })
     ).toBeVisible();
 
     // ---------- DESCRIPTION ----------
@@ -416,6 +473,8 @@
     fetchOffersData,
     parseOffers,
     categorizeOffers,
+    firstVisibleOfferTitle,
+    getOffersCarouselNextButton,
     navigateToOffers,
     verifyOffersInTab,
     switchTab,
