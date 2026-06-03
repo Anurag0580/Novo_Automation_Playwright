@@ -289,11 +289,18 @@ async function captureGiftCardAPI(page, apiPath = '/api/gifts-wallets/gift-card/
     page.getByRole('button', { name: COUNTRY_ID === 2 ? 'Pay now' : 'Next' }).first();
 
   const [response] = await Promise.all([
-    page.waitForResponse(res => res.url().includes(`${BACKEND_URL}${apiPath}`) && res.status() === 200),
+    page.waitForResponse(res => res.url().includes(`${BACKEND_URL}${apiPath}`)),
     actionLocator.click()
   ]);
 
   const body = await response.json();
+
+  if (response.status() !== 200 || !body.success) {
+    const errorMsg = body.message || 'Unknown backend error';
+    console.log(`❌ Gift card API error: ${errorMsg}`);
+    throw new Error(`Gift card API failed with status ${response.status()}: ${errorMsg}`);
+  }
+
   expect(body.success).toBeTruthy();
   expect(body.data).toHaveProperty('reservationId');
   console.log(`✅ Gift card API success: ${body.data.reservationId}`);
