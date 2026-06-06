@@ -522,42 +522,36 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       if (iconCount > 0) {
         await trailerIcon.click();
 
-        const ytIframe = page.frameLocator(
-          'iframe[title="YouTube video player"]',
-        );
+        const ytIframe = page
+          .locator('iframe[src*="youtube"]:visible')
+          .last();
+        await expect(ytIframe).toBeVisible({ timeout: 20000 });
 
-        await ytIframe
-          .first()
-          .locator('button[aria-label="Play"], .ytp-large-play-button')
-          .waitFor({ state: "visible", timeout: 15000 });
+        const ytPlayer = ytIframe.contentFrame();
+        const player = ytPlayer.locator(".html5-video-player");
+        await expect(player).toBeVisible({ timeout: 20000 });
 
-        await ytIframe.getByRole("button", { name: /play/i }).click();
+        const playButton = ytPlayer
+          .locator(
+            ".ytp-cued-thumbnail-overlay .ytp-large-play-button, .ytp-large-play-button",
+          )
+          .first();
 
-        await expect(
-          ytIframe.locator(".ytp-progress-bar-padding"),
-        ).toBeVisible();
-
-        // Close trailer modal
-        let closed = false;
-        for (const selector of [
-          '[role="dialog"] svg',
-          '[aria-label="Close"]',
-          "button:has(svg)",
-        ]) {
-          try {
-            const el = page.locator(selector);
-            if (await el.isVisible({ timeout: 2000 })) {
-              await el.click();
-              closed = true;
-              break;
-            }
-          } catch {
-            // Continue to next selector
-          }
+        // Some trailers autoplay, so the initial play button may already be hidden.
+        if (await playButton.isVisible().catch(() => false)) {
+          await playButton.click();
         }
-        if (!closed) {
-          await page.keyboard.press("Escape");
-        }
+
+        await expect(ytPlayer.locator("video.html5-main-video")).toBeAttached();
+
+        // The trailer modal exposes its close icon inside an empty heading.
+        const closeTrailer = page
+          .getByRole("heading")
+          .filter({ hasText: /^$/ })
+          .locator("svg");
+        await expect(closeTrailer).toBeVisible();
+        await closeTrailer.click();
+        await expect(ytIframe).toBeHidden({ timeout: 10000 });
       } else {
         console.warn(
           `⚠ Trailer icon missing for movie with trailer: ${movieTitle}`,
@@ -581,6 +575,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       .first();
 
     await expect(bookNowBtn).toBeVisible({ timeout: 20000 });
+    await bookNowBtn.hover();
     await bookNowBtn.click();
 
     // 9. Navigate back
