@@ -54,8 +54,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     console.log("=== ENGLISH VERSION ===");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+      page.getByText(apiData.page_name, { exact: true}),
     ).toBeVisible();
 
     if (en.description_heading) {
@@ -117,8 +120,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("=== ARABIC VERSION ===");
     await switchLanguage(page, "العربية");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+      page.getByText(apiData.page_name_ar, { exact: true}),
     ).toBeVisible();
 
     if (ar.description_heading) {
@@ -194,8 +200,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     console.log("\n=== ENGLISH VERSION ===");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+      page.getByText(apiData.page_name, { exact: true}),
     ).toBeVisible();
 
     if (apiData.page_desc) {
@@ -268,8 +277,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ARABIC VERSION ===");
     await switchLanguage(page, "العربية");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+      page.getByText(apiData.page_name_ar, { exact: true}),
     ).toBeVisible();
 
     if (apiData.page_desc_ar) {
@@ -362,8 +374,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     console.log("\n=== ENGLISH VERSION ===");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+      page.getByText(apiData.page_name, { exact: true}),
     ).toBeVisible();
 
     if (apiData.page_desc) {
@@ -417,8 +432,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ARABIC VERSION ===");
     await switchLanguage(page, "العربية");
 
+    // await expect(
+    //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+    // ).toBeVisible();
     await expect(
-      page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+      page.getByText(apiData.page_name_ar, { exact: true}).nth(1),
     ).toBeVisible();
 
     if (apiData.page_desc_ar) {
@@ -508,9 +526,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ENGLISH VERSION ===");
 
     try {
+      // await expect(
+      //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+      // ).toBeVisible({ timeout: 8000 });
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
-      ).toBeVisible({ timeout: 8000 });
+      page.getByText(apiData.page_name, { exact: true}).nth(1)).toBeVisible();
       console.log(`✔ Page title validated: ${apiData.page_name}`);
     } catch {
       console.warn(`Page title not found: ${apiData.page_name}`);
@@ -595,9 +615,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     try {
+      // await expect(
+      //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+      // ).toBeVisible({ timeout: 8000 });
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
-      ).toBeVisible({ timeout: 8000 });
+      page.getByText(apiData.page_name_ar, { exact: true}).nth(1)).toBeVisible();
       console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
     } catch {
       console.warn(`Arabic page title not found: ${apiData.page_name_ar}`);
@@ -745,9 +767,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ENGLISH VERSION ===");
 
     try {
+      // await expect(
+      //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
+      // ).toBeVisible({ timeout: 8000 });
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name }),
-      ).toBeVisible({ timeout: 8000 });
+      page.getByText(apiData.page_name, { exact: true})).toBeVisible();
       console.log(`✔ Page title validated: ${apiData.page_name}`);
     } catch {
       console.warn(`Page title not found: ${apiData.page_name}`);
@@ -845,9 +869,11 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     await switchLanguage(page, "العربية");
 
     try {
+      // await expect(
+      //   page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
+      // ).toBeVisible({ timeout: 8000 });
       await expect(
-        page.locator("h1,h2,h3").filter({ hasText: apiData.page_name_ar }),
-      ).toBeVisible({ timeout: 8000 });
+      page.getByText(apiData.page_name_ar, { exact: true}).nth(1)).toBeVisible();
       console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
     } catch {
       console.warn(`Arabic page title not found: ${apiData.page_name_ar}`);
@@ -997,9 +1023,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     console.log("\n=== ENGLISH VERSION ===");
 
+    // await expect(
+    //   page.getByRole("heading", { name: apiData.page_name }),
+    // ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: apiData.page_name }),
-    ).toBeVisible();
+      page.getByText(apiData.page_name, { exact: true})).toBeVisible();
+      console.log(`✔ Page title validated: ${apiData.page_name}`);
 
     if (en.bannerArray?.[0]?.banner) {
       const bannerImg = page.locator('img[alt="faqs"]').first();
@@ -1032,9 +1061,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("\n=== ARABIC VERSION ===");
     await switchLanguage(page, "العربية");
 
+    // await expect(
+    //   page.getByRole("heading", { name: apiData.page_name_ar }),
+    // ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: apiData.page_name_ar }),
-    ).toBeVisible();
+      page.getByText(apiData.page_name_ar, { exact: true}).nth(1)).toBeVisible();
+      console.log(`✔ Page title validated: ${apiData.page_name_ar}`);
 
     if (ar.bannerArray?.[0]?.banner) {
       const bannerImgAr = page.locator('img[alt="faqs"]').first();
@@ -1111,11 +1143,12 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
 
     console.log("=== ENGLISH VERSION ===");
 
-    await expect(
-      page
-        .locator("h1,h2,h3")
-        .filter({ hasText: new RegExp(apiData.page_name, "i") }),
-    ).toBeVisible({ timeout: 10000 });
+    // await expect(
+    //   page
+    //     .locator("h1,h2,h3")
+    //     .filter({ hasText: new RegExp(apiData.page_name, "i") }),
+    // ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(apiData.page_name, { exact: true})).toBeVisible();
     console.log(`✔ Page title validated: ${apiData.page_name}`);
 
     if (en.bannerArray && en.bannerArray[0]?.banner) {
@@ -1242,11 +1275,13 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     console.log("=== ARABIC VERSION ===");
     await switchLanguage(page, "العربية");
 
+    // await expect(
+    //   page
+    //     .locator("h1,h2,h3")
+    //     .filter({ hasText: new RegExp(apiData.page_name_ar, "i") }),
+    // ).toBeVisible({ timeout: 10000 });
     await expect(
-      page
-        .locator("h1,h2,h3")
-        .filter({ hasText: new RegExp(apiData.page_name_ar, "i") }),
-    ).toBeVisible({ timeout: 10000 });
+      page.getByText(apiData.page_name_ar, { exact: true})).toBeVisible();
     console.log(`✔ Arabic page title validated: ${apiData.page_name_ar}`);
 
     if (ar.bannerArray && ar.bannerArray[0]?.banner) {
