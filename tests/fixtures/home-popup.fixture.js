@@ -59,12 +59,21 @@ export const test = base.extend({
     await use(page);
   },
   autoLogger: [async ({}, use, testInfo) => {
-    const match = testInfo.title.match(/^(TC(?:[_-][A-Z0-9]+)*?[_-]?\d+)/i);
-    const tcId = match ? match[1] : testInfo.title;
-    console.log(`=== ${tcId} Started ===`);
-    await use();
-    console.log(`${tcId} Completed...`);
-  }, { auto: true }],
+  const match = testInfo.title.match(/^(TC(?:[_-][A-Z0-9]+)*?[_-]?\d+)/i);
+  const tcId = match ? match[1] : "N/A";
+
+  console.log("\n==================================================");
+  console.log(`🚀 ${tcId} STARTED`);
+  console.log(`📝 ${testInfo.title}`);
+  console.log("==================================================\n");
+
+  await use();
+
+  console.log("\n==================================================");
+  console.log(`✅ ${tcId} COMPLETED`);
+  console.log(`📝 ${testInfo.title}`);
+  console.log("==================================================\n");
+}, { auto: true }],
 });
 
 export { expect, request };
