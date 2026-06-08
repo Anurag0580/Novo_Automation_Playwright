@@ -1110,7 +1110,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/career`);
     // await expect(page.getByRole("heading", { name: "Careers" })).toBeVisible();
-    await expect(page.getByText("Careers")).toBeVisible();
+    await expect(page.getByText("Careers").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
