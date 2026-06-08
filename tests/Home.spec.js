@@ -178,7 +178,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.getByRole("navigation")).toContainText("نادي بريميير");
 
     await headerButton(page, "ENG").click({ force: true });
-    console.log("✅ TC001 COMPLETED");
   });
 
   test("TC002 - Verify English Search Functionality and API Integration", async ({
@@ -226,7 +225,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       ),
     ).toBeTruthy();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
-    console.log("✅ TC002 COMPLETED");
   });
 
   test("TC003 - Verify Arabic Search Functionality and Language Support", async ({
@@ -265,7 +263,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     await searchBox.clear();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
-    console.log("✅ TC003 COMPLETED");
   });
 
   test("TC004 - Verify Homepage Banner Functionality and Navigation", async ({
@@ -404,7 +401,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       console.log("⏭ Banner auto-scroll verified");
     });
 
-    console.log("✅ TC004 COMPLETED SUCCESSFULLY");
   });
 
   test("TC005 - Verify Movies Section Functionality in English", async ({
@@ -630,8 +626,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    console.log("\n🚀 TEST STARTED: Offers & Promotions Validation");
-    console.log("=".repeat(50));
 
     // Fetch offers from API
     console.log("📡 Fetching offers from API...");
@@ -674,10 +668,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await waitForOffersCarouselReady(page);
 
     await testOffersInLanguage(page, orderedOffers, true);
-
-    console.log("\n" + "=".repeat(50));
-    console.log("🎉 TEST COMPLETED SUCCESSFULLY");
-    console.log("=".repeat(50) + "\n");
   });
 
   test("TC010 - Verify Experience Cards Display and Navigation", async ({
@@ -918,7 +908,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     expect(experiences.length).toBeGreaterThan(0);
     expect(processedCount).toBeGreaterThan(0);
     console.log(
-      `✅ TC010 COMPLETED | Processed: ${processedCount}, Skipped: ${skippedCount}`,
+      `Processed: ${processedCount}, Skipped: ${skippedCount}`,
     );
   });
 
@@ -1168,7 +1158,6 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     page,
     request,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_01 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1280,13 +1269,11 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     await page.waitForLoadState("networkidle");
     await expect(page.url()).toContain("/seat-selection/");
     console.log("✅ Successfully navigated to seat selection page");
-    console.log("========== TEST: TC_QB_01 PASSED ==========\n");
   });
 
   test("TC_QB_NEG_01 - Verify Book button remains disabled until all mandatory Quick Book selections are completed", async ({
     page,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_NEG_01 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1333,13 +1320,11 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     );
     await expect(bookBtn).not.toHaveClass(/cursor-not-allowed/);
     console.log("✅ Book button is now enabled (as expected)");
-    console.log("========== TEST: TC_QB_NEG_01 PASSED ==========\n");
   });
 
   test("TC_QB_NEG_02 - Verify Showtime dropdown is disabled until Movie, Cinema, Experience, and Date are selected", async ({
     page,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_NEG_02 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1383,6 +1368,5 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     await dropdowns.showtime.click({ force: true });
     await expect(page.getByRole("option").first()).toBeVisible();
     console.log("✅ Showtime dropdown is now enabled with options available");
-    console.log("========== TEST: TC_QB_NEG_02 PASSED ==========\n");
   });
 });
