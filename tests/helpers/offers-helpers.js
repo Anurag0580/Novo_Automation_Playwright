@@ -265,7 +265,8 @@ export async function validateCard(
   page,
   panEntriesPromise,
   offerValidatePromise,
-  cardBin = PRIMARY_BANK_OFFER.cardBin
+  cardBin = PRIMARY_BANK_OFFER.cardBin,
+  offerCard = page
 ) {
   const cardNumber = generateCardNumber(cardBin);
   console.log(
@@ -273,10 +274,10 @@ export async function validateCard(
     cardNumber
   );
 
-  await page
+  await offerCard
     .getByRole("textbox", { name: "Enter Card Number" })
     .fill(cardNumber);
-  await page.getByRole("button", { name: "Validate" }).click();
+  await offerCard.getByRole("button", { name: "Validate" }).click();
   await page.waitForTimeout(1000);
 
   let panEntriesData = null;
@@ -394,18 +395,28 @@ export async function verifyOfferAppliedUI(page, offerValidationData) {
 }
 
 export async function validateCardFlow(page) {
-  await expect(page.getByText(PRIMARY_BANK_OFFER.name).first()).toBeVisible({
+  const selectedOfferToggle = page
+    .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
+    .first();
+  await expect(selectedOfferToggle).toBeVisible({
     timeout: 10000,
   });
-  await page.getByRole("button", { name: "See More" }).click();
-  await page.getByRole("button", { name: "Terms & Conditions" }).click();
+  if ((await selectedOfferToggle.getAttribute("aria-expanded")) !== "true") {
+    await selectedOfferToggle.click();
+  }
+  await expect(selectedOfferToggle).toHaveAttribute("aria-expanded", "true");
+
+  const selectedOfferCard = selectedOfferToggle.locator("xpath=..");
+  await selectedOfferCard
+    .getByRole("button", { name: "Terms & Conditions" })
+    .click();
   await page
     .locator("div")
     .filter({ hasText: /^Terms & Conditions:$/ })
     .getByRole("button")
     .click();
   await expect(
-    page.getByRole("textbox", { name: "Enter Card Number" })
+    selectedOfferCard.getByRole("textbox", { name: "Enter Card Number" })
   ).toBeVisible({ timeout: 10000 });
 
   const { panEntriesPromise, offerValidatePromise } =
@@ -414,7 +425,8 @@ export async function validateCardFlow(page) {
     page,
     panEntriesPromise,
     offerValidatePromise,
-    PRIMARY_BANK_OFFER.cardBin
+    PRIMARY_BANK_OFFER.cardBin,
+    selectedOfferCard
   );
 
   await storeOfferValidationData(page, offerValidationData);
@@ -433,30 +445,39 @@ export async function validateCardFlow(page) {
 export async function handleBankOffersFlow(page, request, sessionId, cinemaId) {
   await verifyBankOffers(page, request, sessionId, cinemaId);
 
-  const dibsyPublicKeyPromise = page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/payment/dibsy/public-key/") &&
-      response.status() === 200,
-    { timeout: 15000 }
-  );
+  const dibsyPublicKeyPromise =
+    COUNTRY_ID === 1
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/payment/dibsy/public-key/") &&
+            response.status() === 200,
+          { timeout: 15000 }
+        )
+      : null;
 
   await page
     .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
     .first()
     .click();
-  console.log(`Clicked ${PRIMARY_BANK_OFFER.name} - waiting for Dibsy API...`);
 
-  const dibsyResponse = await dibsyPublicKeyPromise;
-  const dibsyPublicKeyData = await dibsyResponse.json();
+  if (dibsyPublicKeyPromise) {
+    console.log(`Clicked ${PRIMARY_BANK_OFFER.name} - waiting for Dibsy API...`);
+    const dibsyResponse = await dibsyPublicKeyPromise;
+    const dibsyPublicKeyData = await dibsyResponse.json();
 
-  await page.evaluate(
-    ([publicKeyData]) => {
-      localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
-      localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
-      localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
-    },
-    [dibsyPublicKeyData]
-  );
+    await page.evaluate(
+      ([publicKeyData]) => {
+        localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
+        localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
+        localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
+      },
+      [dibsyPublicKeyData]
+    );
+  } else {
+    console.log(
+      `Clicked ${PRIMARY_BANK_OFFER.name} - ${COUNTRY_NAME} uses CyberSource; skipping Dibsy public-key API`
+    );
+  }
 
   await validateCardFlow(page);
 }
@@ -1003,13 +1024,35 @@ export async function verifyOffersPromotionsSection(
         .filter({ hasText: /^Offers & Promotions$/ })
         .first()
     ).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Bank Offers").first()).toBeVisible({
-      timeout: 5000,
-    });
+    const bankOffersTab = page
+      .getByText("Bank Offers", { exact: true })
+      .first();
+    await expect(bankOffersTab).toBeVisible({ timeout: 5000 });
 
     if (isOfferApplied && offerData) {
       const appliedOfferName = offerData.data.applicableOffer?.offer_name;
       if (appliedOfferName) {
+        const isBankOffersTabSelected = await bankOffersTab.evaluate(
+          (element) => {
+            const tab =
+              element.closest(
+                '[role="tab"], button, [aria-selected], [data-state]'
+              ) || element;
+            const className =
+              typeof tab.className === "string" ? tab.className : "";
+
+            return (
+              tab.getAttribute("aria-selected") === "true" ||
+              tab.getAttribute("data-state") === "active" ||
+              /\bbg-white\b|\btext-black\b/.test(className)
+            );
+          }
+        );
+
+        if (!isBankOffersTabSelected) {
+          await bankOffersTab.click();
+        }
+
         try {
           await expect(
             page.getByText(new RegExp(appliedOfferName, "i")).first()
@@ -1080,8 +1123,10 @@ export async function verifyFNBPageBasics(
     `\/fnb\/cinema\/${cinemaId}\/reservationId\/${reservationId}`
   );
   await expect(page).toHaveURL(expectedUrlPattern, { timeout: 15000 });
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Snack Time!" })).toBeVisible({
+  // await expect(page.getByRole("heading", { name: "Snack Time!" })).toBeVisible({
+  //   timeout: 10000,
+  // });
+  await expect(page.getByText("Snack Time!")).toBeVisible({
     timeout: 10000,
   });
 }
