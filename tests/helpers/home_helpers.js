@@ -535,7 +535,8 @@ export async function clickAndSelectOption(page, dropdownLocator, optionText, sh
   if (await exactOption.count()) {
     await exactOption.first().click();
   } else {
-    const partialOption = page.getByRole("option").filter({ hasText: optionText }).first();
+    // const partialOption = page.getByRole("option").filter({ hasText: optionText }).first();
+    const partialOption = page.getByRole('option', optionText).first();
     await expect(partialOption).toBeVisible({ timeout: DEFAULT_TIMEOUT });
     await partialOption.scrollIntoViewIfNeeded();
     await partialOption.click();
