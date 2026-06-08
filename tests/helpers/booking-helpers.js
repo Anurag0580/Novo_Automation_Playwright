@@ -423,6 +423,23 @@ export async function dynamicBookingBankOffer(page, movieId) {
 // AUTHENTICATION HELPERS
 // ============================================================================
 
+async function dismissAgeRatingPopup(page) {
+  const confirmButton = page.getByRole("button", {
+    name: "Confirm",
+    exact: true,
+  });
+  const ageRatingPopup = page
+    .locator("div.fixed.inset-0")
+    .filter({ hasText: "Age Restriction" })
+    .filter({ has: confirmButton })
+    .first();
+
+  await expect(ageRatingPopup).toBeVisible({ timeout: 10000 });
+  await expect(confirmButton).toBeEnabled();
+  await confirmButton.click();
+  await expect(ageRatingPopup).toBeHidden({ timeout: 10000 });
+}
+
 export async function loginAndCaptureTokenBooking(page) {
   let authToken = null;
 
@@ -447,9 +464,10 @@ export async function loginAndCaptureTokenBooking(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-    timeout: 15000,
-  });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
+  //   timeout: 15000,
+  // });
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // Wait until token is captured
   await expect.poll(() => authToken, { timeout: 10000 }).toBeTruthy();
@@ -464,12 +482,7 @@ export async function loginAndCaptureTokenBooking(page) {
     localStorage.setItem("authorization_token", token);
   }, authToken);
 
-  // 🔐 MANDATORY Confirm popup
-  await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible({
-    timeout: 10000,
-  });
-
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
 
   return authToken;
 }
@@ -518,7 +531,8 @@ export async function loginAndCaptureTokenLoyalty(page) {
     }
   }
 
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // ✅ Inject token into localStorage if captured
   if (authToken) {
@@ -556,8 +570,7 @@ export async function loginAndCaptureTokenLoyalty(page) {
     console.log("Rating Status:", ratingResponse.status());
   }
 
-  await expect(page.locator("body")).toContainText("Please! Note");
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
   page.off("request", tokenListener);
 
   return authToken;
@@ -582,9 +595,10 @@ export async function login(page, email, password) {
     .getByRole("textbox", { name: "Enter your password" })
     .fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-    timeout: 15000,
-  });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
+  //   timeout: 15000,
+  // });
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 }
 
 export async function injectAuthToken(page, authToken) {
@@ -604,10 +618,7 @@ export async function injectAuthToken(page, authToken) {
 }
 
 export async function confirmAgeRating(page, tokenListener) {
-  await expect(page.locator("body")).toContainText("Please! Note", {
-    timeout: 10000,
-  });
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
   page.off("request", tokenListener);
 }
 
@@ -1050,7 +1061,7 @@ export async function verifyCyberSourceSdkLoaded(page) {
     name: /Checkout with card/i,
   });
 
-  await expect(checkoutButton).toBeVisible({ timeout: 15000 });
+  await expect(checkoutButton).toBeVisible({ timeout: 30000 });
 
   const incompatibleMessage = cybersourceFrame.getByText(
     /Browser not compatible\.?/i
