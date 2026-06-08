@@ -115,33 +115,36 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
     
     const rightButton = page.locator('.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)');
     const verifiedOffers = new Set();
-const maxSlides = all.length * 2;
-let slideCount = 0;
+    const maxSlides = all.length * 2;
+    let slideCount = 0;
 
-while (verifiedOffers.size < all.length && slideCount < maxSlides) {
-  slideCount++;
+    while (verifiedOffers.size < all.length && slideCount < maxSlides) {
+      slideCount++;
 
-  for (const offer of all) {
-    if (verifiedOffers.has(offer.title)) continue;
+      const activeSlide = page.locator('.slick-slide.slick-active').first();
 
-    const titleVisible = await page
-      .getByRole('heading', { name: offer.title })
-      .first()
-      .isVisible()
-      .catch(() => false);
+      for (const offer of all) {
+        if (verifiedOffers.has(offer.title)) continue;
 
-    if (titleVisible) {
-      verifiedOffers.add(offer.title);
-      break;
+        const titleVisible = await activeSlide
+          .getByText(offer.title, { exact: false })
+          .first()
+          .isVisible()
+          .catch(() => false);
+
+        if (titleVisible) {
+          verifiedOffers.add(offer.title);
+          break;
+        }
+      }
+
+      if (verifiedOffers.size < all.length) {
+        await rightButton.click();
+        await page.waitForTimeout(1000); // Wait for transition animation to complete
+      }
     }
-  }
 
-  if (verifiedOffers.size < all.length) {
-    await rightButton.click();
-  }
-}
-
-expect(verifiedOffers.size).toBe(all.length);
+    expect(verifiedOffers.size).toBe(all.length);
     
     // List any missing offers
     if (verifiedOffers.size < all.length) {

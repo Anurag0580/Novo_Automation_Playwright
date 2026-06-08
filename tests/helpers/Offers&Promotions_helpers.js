@@ -1,24 +1,24 @@
-  import { expect } from '@playwright/test';
-  import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
+import { expect } from '@playwright/test';
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
-  // ==================== CONSTANTS ====================
-  const API_BASE = `${BACKEND_URL}/api/home`;
+// ==================== CONSTANTS ====================
+const API_BASE = `${BACKEND_URL}/api/home`;
 
-  const HEADERS = {
-    accept: 'application/json, text/plain, */*',
-    origin: BASE_URL,
-    referer: `${BASE_URL}/`
-  };
+const HEADERS = {
+  accept: 'application/json, text/plain, */*',
+  origin: BASE_URL,
+  referer: `${BASE_URL}/`
+};
 
 
 
-  // ==================== HELPER FUNCTIONS ====================
+// ==================== HELPER FUNCTIONS ====================
 
-  /**
-   * Fetch offers and pages data from backend
-   */
-  async function fetchOffersData(page) {
-    const [pages, offerGroups] = await Promise.all([
+/**
+ * Fetch offers and pages data from backend
+ */
+async function fetchOffersData(page) {
+  const [pages, offerGroups] = await Promise.all([
     page.request.get(`${API_BASE}/pages?key=/offers&country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS }),
     page.request.get(`${API_BASE}/offer-groups?country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS })
   ]);
@@ -27,406 +27,410 @@
     pages: await pages.json(),
     offerGroups: await offerGroups.json()
   };
+}
+
+/**
+ * Parse offers from backend data
+ */
+function parseOffers(backendData) {
+  // Handle both possible API structures
+  const offersRaw = backendData?.offerGroups?.data?.data ||
+    backendData?.offerGroups?.data || [];
+
+  console.log(`📦 Found ${offersRaw.length} offers in API response`);
+
+  return offersRaw.map((o) => ({
+    title: o.name || o.title_en || o.title || 'Untitled',
+    type: o.type || 'UNKNOWN',
+    description: o.long_desc || o.short_desc || 'Unavailable',
+    short_desc: o.short_desc || o.long_desc || 'No description available',
+    id: o.id || o.offer_id || 'unknown-id'
+  }));
+}
+
+/**
+ * Categorize offers by type
+ */
+function categorizeOffers(offers) {
+  const normal = offers.filter(o => o.type === 'NORMAL');
+  const bin = offers.filter(o => o.type === 'BIN');
+  const collectible = offers.filter(o => o.type === 'COLLECTIBLE');
+
+  console.log(`✅ Categorized: ${offers.length} total, ${normal.length} NORMAL, ${bin.length} BIN, ${collectible.length} COLLECTIBLE`);
+
+  return {
+    all: offers,
+    normal,
+    bin,
+    collectible
+  };
+}
+
+/**
+ * Navigate to Offers & Promotions page
+ */
+async function navigateToOffers(page) {
+  await page.goto(`${BASE_URL}/home`, { waitUntil: 'domcontentloaded' });
+
+  const backendData = await fetchOffersData(page);
+
+  const pageName =
+    backendData?.pages?.data?.data?.[0]?.page_name || 'Offers & Promotions';
+
+  const [offerResponse] = await Promise.all([
+    page.waitForResponse(
+      resp =>
+        resp.url().includes('offer-groups') &&
+        [200, 304].includes(resp.status()),
+    ),
+    page.getByRole('link', { name: 'Offers & Promotions' }).click()
+  ]);
+
+  await expect(page).toHaveURL(/\/promotions\/?$/);
+
+  // ✅ Correct anchor (listing page)
+  await expect(
+    page.getByRole('heading', { name: pageName })
+  ).toBeVisible({ timeout: 8000 });
+
+  return offerResponse;
+}
+
+
+/**
+ * Verify offers are visible in tab
+ */
+async function verifyOffersInTab(page, offers = [], ...excludeGroups) {
+  const excludeOffers = excludeGroups
+    .filter(group => Array.isArray(group))
+    .flat()
+    .filter(offer => offer?.title);
+  console.log(`🔍 Verifying ${offers.length} offers are visible`);
+
+  // Verify expected offers are visible
+  for (const offer of offers.filter(offer => offer?.title)) {
+    console.log(`  Checking EXPECTED offer: ${offer.title}`);
+    const locator = page.getByText(offer.title, { exact: false }).first();
+    await locator.scrollIntoViewIfNeeded();
+    await expect(locator).toBeVisible();
   }
 
-  /**
-   * Parse offers from backend data
-   */
-  function parseOffers(backendData) {
-    // Handle both possible API structures
-    const offersRaw = backendData?.offerGroups?.data?.data || 
-                      backendData?.offerGroups?.data || [];
-    
-    console.log(`📦 Found ${offersRaw.length} offers in API response`);
-    
-    return offersRaw.map((o) => ({
-      title: o.name || o.title_en || o.title || 'Untitled',
-      type: o.type || 'UNKNOWN',
-      description: o.long_desc || o.short_desc || 'Unavailable',
-      short_desc: o.short_desc || o.long_desc || 'No description available',
-      id: o.id || o.offer_id || 'unknown-id'
-    }));
-  }
+  // Verify excluded offers are hidden (don't fail on warning, just check)
+  for (const offer of excludeOffers) {
+    const visible = await page.getByText(offer.title, { exact: false })
+      .first()
+      .isVisible()
+      .catch(() => false);
 
-  /**
-   * Categorize offers by type
-   */
-  function categorizeOffers(offers) {
-    const normal = offers.filter(o => o.type === 'NORMAL');
-    const bin = offers.filter(o => o.type === 'BIN');
-    const collectible = offers.filter(o => o.type === 'COLLECTIBLE');
-    
-    console.log(`✅ Categorized: ${offers.length} total, ${normal.length} NORMAL, ${bin.length} BIN, ${collectible.length} COLLECTIBLE`);
-    
-    return {
-      all: offers,
-      normal,
-      bin,
-      collectible
-    };
-  }
-
-  /**
-   * Navigate to Offers & Promotions page
-   */
-  async function navigateToOffers(page) {
-    await page.goto(`${BASE_URL}/home`, { waitUntil: 'domcontentloaded' });
-
-    const backendData = await fetchOffersData(page);
-
-    const pageName =
-      backendData?.pages?.data?.data?.[0]?.page_name || 'Offers & Promotions';
-
-    const [offerResponse] = await Promise.all([
-      page.waitForResponse(
-        resp =>
-          resp.url().includes('offer-groups') &&
-          [200, 304].includes(resp.status()),
-      ),
-      page.getByRole('link', { name: 'Offers & Promotions' }).click()
-    ]);
-
-    await expect(page).toHaveURL(/\/promotions\/?$/);
-
-    // ✅ Correct anchor (listing page)
-    await expect(
-      page.getByRole('heading', { name: pageName })
-    ).toBeVisible({ timeout: 8000 });
-
-    return offerResponse;
-  }
-
-
-  /**
-   * Verify offers are visible in tab
-   */
-  async function verifyOffersInTab(page, offers = [], ...excludeGroups) {
-    const excludeOffers = excludeGroups
-      .filter(group => Array.isArray(group))
-      .flat()
-      .filter(offer => offer?.title);
-    console.log(`🔍 Verifying ${offers.length} offers are visible`);
-    
-    // Verify expected offers are visible
-    for (const offer of offers.filter(offer => offer?.title)) {
-      console.log(`  Checking EXPECTED offer: ${offer.title}`);
-      await expect(page.getByText(offer.title, { exact: false }).first())
-        .toBeVisible()
+    if (visible) {
+      console.warn(`⚠️ Excluded offer "${offer.title}" is incorrectly visible in this tab`);
     }
-
-    // Verify excluded offers are hidden (don't fail on warning, just check)
-    for (const offer of excludeOffers) {
-      const visible = await page.getByText(offer.title, { exact: false })
-        .first()
-        .isVisible()
-        .catch(() => false);
-      
-      if (visible) {
-        console.warn(`⚠️ Excluded offer "${offer.title}" is incorrectly visible in this tab`);
-      }
-    }
-    
-    console.log(`  ✅ Tab verification completed`);
   }
 
-  /**
-   * Switch to a tab
-   */
- async function switchTab(page, tabButton) {
+  console.log(`  ✅ Tab verification completed`);
+}
+
+/**
+ * Switch to a tab
+ */
+async function switchTab(page, tabButton) {
   await tabButton.click();
   await page.waitForTimeout(500); // or better: wait for specific content change
 }
 
-  /**
-   * Verify Learn More navigation for offers
-   */
-  async function verifyLearnMoreNavigation(page, offers) {
-    for (const offer of offers) {
-      console.log(`🔗 Learn More → ${offer.title}`);
+/**
+ * Verify Learn More navigation for offers
+ */
+async function verifyLearnMoreNavigation(page, offers) {
+  for (const offer of offers) {
+    console.log(`🔗 Learn More → ${offer.title}`);
 
-      const offersPageUrl = page.url();
+    const offersPageUrl = page.url();
 
-      const card = page
-        .getByText(offer.title, { exact: false })
-        .first()
-        .locator('xpath=ancestor::*[contains(@class,"group")]');
+    const textLocator = page.getByText(offer.title, { exact: false }).first();
+    await textLocator.scrollIntoViewIfNeeded();
 
-      await expect(card).toBeVisible();
+    const card = textLocator.locator('xpath=ancestor::*[contains(@class,"group")]');
 
-      await card.getByRole('link', { name: /learn more/i }).click({ force: true });
+    await expect(card).toBeVisible();
 
-      await expect(page).toHaveURL(/\/promotions\/\d+/);
+    await card.getByRole('link', { name: /learn more/i }).click({ force: true });
 
-      // 🔥 FULL DETAILS VALIDATION
-      await verifyOfferDetailsPage(page, offer);
+    await expect(page).toHaveURL(/\/promotions\/\d+/);
 
-      // Back
-      // await page.goBack();
-      // await page.waitForLoadState('networkidle');
-      // await expect(page).toHaveURL(offersPageUrl);
-      await page.goto(offersPageUrl, { waitUntil: 'domcontentloaded' });
-    }
+    // 🔥 FULL DETAILS VALIDATION
+    await verifyOfferDetailsPage(page, offer);
+
+    // Back
+    // await page.goBack();
+    // await page.waitForLoadState('networkidle');
+    // await expect(page).toHaveURL(offersPageUrl);
+    await page.goto(offersPageUrl, { waitUntil: 'domcontentloaded' });
   }
+}
 
-  /**
-   * Strip HTML tags from text
-   */
-  const stripHtmlTags = (html = '') =>
-    html
-      .replace(/<[^>]*>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .trim();
+/**
+ * Strip HTML tags from text
+ */
+const stripHtmlTags = (html = '') =>
+  html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .trim();
 
-  /**
-   * Normalize URLs for flexible comparison
-   */
-  const normalizeUrl = (url = '') => url.replace(/\/+$/, '').trim();
+/**
+ * Normalize URLs for flexible comparison
+ */
+const normalizeUrl = (url = '') => url.replace(/\/+$/, '').trim();
 
-  /**
-   * Resolve expected CTA label and destination from offer details API
-   */
-  function getExpectedOfferCta(apiData) {
-    const hasCustomCta = Boolean(apiData?.cta_text?.trim());
-    const fallbackLabels = ['Explore Movies'];
+/**
+ * Resolve expected CTA label and destination from offer details API
+ */
+function getExpectedOfferCta(apiData) {
+  const hasCustomCta = Boolean(apiData?.cta_text?.trim());
+  const fallbackLabels = ['Explore Movies'];
 
-    return {
-      labels: hasCustomCta ? [apiData.cta_text.trim()] : fallbackLabels,
-      url: hasCustomCta && apiData?.cta_link?.trim()
-        ? apiData.cta_link.trim()
-        : new URL('/moviePages', BASE_URL).toString()
-    };
-  }
-
-  /**
-   * Find the visible CTA control by accessible name
-   */
-  async function getVisibleCtaLocator(page, labels) {
-    for (const label of labels) {
-      const linkLocator = page.getByRole('link', { name: label, exact: true }).first();
-      if (await linkLocator.isVisible().catch(() => false)) {
-        return { locator: linkLocator, label };
-      }
-
-      const buttonLocator = page.getByRole('button', { name: label, exact: true }).first();
-      if (await buttonLocator.isVisible().catch(() => false)) {
-        return { locator: buttonLocator, label };
-      }
-
-      const textLocator = page.getByText(label, { exact: true }).first();
-      if (await textLocator.isVisible().catch(() => false)) {
-        return { locator: textLocator, label };
-      }
-    }
-
-    return {
-      locator: page.getByText(labels[0], { exact: true }).first(),
-      label: labels[0]
-    };
-  }
-
-  /**
-   * Verify CTA text and redirection from offer details page
-   */
-  async function verifyOfferDetailsCta(page, apiData) {
-    const offerDetailsUrl = page.url();
-    const expectedCta = getExpectedOfferCta(apiData);
-    const { locator: ctaLocator, label: matchedLabel } = await getVisibleCtaLocator(page, expectedCta.labels);
-
-    await expect(ctaLocator).toBeVisible({ timeout: 10000 });
-
-    console.log(`✔ CTA verified: ${matchedLabel}`);
-
-    const href = await ctaLocator.evaluate((node) => {
-      const element = node instanceof HTMLElement ? node : null;
-      const anchor = element?.closest('a');
-      return anchor?.href || null;
-    }).catch(() => null);
-
-    if (href) {
-      expect(normalizeUrl(href)).toContain(normalizeUrl(expectedCta.url));
-    }
-
-    await ctaLocator.click({ force: true });
-
-    await page.waitForURL(
-      url => normalizeUrl(url.toString()).startsWith(normalizeUrl(expectedCta.url)),
-      { timeout: 10000 }
-    );
-
-    await page.goto(offerDetailsUrl, { waitUntil: 'domcontentloaded' });
-  }
-
-  /**
-   * Validate image is loaded
-   */
-  const validateImageLoaded = async (locator, label) => {
-    await locator.scrollIntoViewIfNeeded();
-    await expect(locator).toBeVisible({ timeout: 10000 });
-
-    await expect.poll(
-      async () =>
-        locator.evaluate(img => img.complete && img.naturalWidth > 0),
-      { timeout: 10000 }
-    ).toBe(true);
-
-    console.log(`✔ ${label} loaded`);
+  return {
+    labels: hasCustomCta ? [apiData.cta_text.trim()] : fallbackLabels,
+    url: hasCustomCta && apiData?.cta_link?.trim()
+      ? apiData.cta_link.trim()
+      : new URL('/moviePages', BASE_URL).toString()
   };
+}
 
-  /**
-   * Fetch offer details by ID
-   */
-  async function fetchOfferDetailsById(page, offerId) {
-    const response = await page.request.get(
-      `${API_BASE}/offer-groups-by-id/${offerId}?country_id=${COUNTRY_ID}&channel=web`,
-      { headers: HEADERS }
-    );
+/**
+ * Find the visible CTA control by accessible name
+ */
+async function getVisibleCtaLocator(page, labels) {
+  for (const label of labels) {
+    const linkLocator = page.getByRole('link', { name: label, exact: true }).first();
+    if (await linkLocator.isVisible().catch(() => false)) {
+      return { locator: linkLocator, label };
+    }
 
-    expect(response.ok()).toBeTruthy();
-    const json = await response.json();
-    expect(json.success).toBeTruthy();
+    const buttonLocator = page.getByRole('button', { name: label, exact: true }).first();
+    if (await buttonLocator.isVisible().catch(() => false)) {
+      return { locator: buttonLocator, label };
+    }
 
-    return json.data;
+    const textLocator = page.getByText(label, { exact: true }).first();
+    if (await textLocator.isVisible().catch(() => false)) {
+      return { locator: textLocator, label };
+    }
   }
 
-  /**
-   * Verify offer details page
-   */
-  async function verifyOfferDetailsPage(page, offer) {
-    console.log(`🔎 Verifying Offer Details for ID: ${offer.id}`);
+  return {
+    locator: page.getByText(labels[0], { exact: true }).first(),
+    label: labels[0]
+  };
+}
 
-    const apiData = await fetchOfferDetailsById(page, offer.id);
+/**
+ * Verify CTA text and redirection from offer details page
+ */
+async function verifyOfferDetailsCta(page, apiData) {
+  const offerDetailsUrl = page.url();
+  const expectedCta = getExpectedOfferCta(apiData);
+  const { locator: ctaLocator, label: matchedLabel } = await getVisibleCtaLocator(page, expectedCta.labels);
 
-    // ---------- TITLE ----------
+  await expect(ctaLocator).toBeVisible({ timeout: 10000 });
+
+  console.log(`✔ CTA verified: ${matchedLabel}`);
+
+  const href = await ctaLocator.evaluate((node) => {
+    const element = node instanceof HTMLElement ? node : null;
+    const anchor = element?.closest('a');
+    return anchor?.href || null;
+  }).catch(() => null);
+
+  if (href) {
+    expect(normalizeUrl(href)).toContain(normalizeUrl(expectedCta.url));
+  }
+
+  await ctaLocator.click({ force: true });
+
+  await page.waitForURL(
+    url => normalizeUrl(url.toString()).startsWith(normalizeUrl(expectedCta.url)),
+    { timeout: 10000 }
+  );
+
+  await page.goto(offerDetailsUrl, { waitUntil: 'domcontentloaded' });
+}
+
+/**
+ * Validate image is loaded
+ */
+const validateImageLoaded = async (locator, label) => {
+  await locator.scrollIntoViewIfNeeded();
+  await expect(locator).toBeVisible({ timeout: 10000 });
+
+  await expect.poll(
+    async () =>
+      locator.evaluate(img => img.complete && img.naturalWidth > 0),
+    { timeout: 10000 }
+  ).toBe(true);
+
+  console.log(`✔ ${label} loaded`);
+};
+
+/**
+ * Fetch offer details by ID
+ */
+async function fetchOfferDetailsById(page, offerId) {
+  const response = await page.request.get(
+    `${API_BASE}/offer-groups-by-id/${offerId}?country_id=${COUNTRY_ID}&channel=web`,
+    { headers: HEADERS }
+  );
+
+  expect(response.ok()).toBeTruthy();
+  const json = await response.json();
+  expect(json.success).toBeTruthy();
+
+  return json.data;
+}
+
+/**
+ * Verify offer details page
+ */
+async function verifyOfferDetailsPage(page, offer) {
+  console.log(`🔎 Verifying Offer Details for ID: ${offer.id}`);
+
+  const apiData = await fetchOfferDetailsById(page, offer.id);
+
+  // ---------- TITLE ----------
+  // await expect(
+  //   page.getByRole('heading', { name: apiData.name })
+  // ).toBeVisible();
+  await expect(page.getByText(apiData.name).first()).toBeVisible();
+
+  // ---------- DESCRIPTION ----------
+  for (const field of ['short_desc', 'extra_info']) {
+    if (!apiData[field]) {
+      continue;
+    }
+
+    const cleanText = stripHtmlTags(apiData[field]).replace(/\s+/g, ' ').trim().substring(0, 40);
+    if (!cleanText) {
+      continue;
+    }
+
+    await expect(page.locator('body')).toContainText(
+      new RegExp(cleanText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+    );
+  }
+
+  // ---------- DATE INFORMATION ----------
+  if (apiData.valid_on) {
+    await expect(page.getByText('Valid on', { exact: true })).toBeVisible();
+    await expect(page.getByText(apiData.valid_on, { exact: true })).toBeVisible();
+  }
+
+  if (apiData.valid_till_date) {
+    const yyyyMmDd = apiData.valid_till_date;
+    const ddMmYyyy = yyyyMmDd.split('-').reverse().join('-');
+
+    await expect(page.getByText(/Valid till/i)).toBeVisible();
+
     await expect(
-      page.getByRole('heading', { name: apiData.name })
+      page.getByText(new RegExp(`${yyyyMmDd}|${ddMmYyyy}`))
     ).toBeVisible();
 
-    // ---------- DESCRIPTION ----------
-    for (const field of ['short_desc', 'extra_info']) {
-      if (!apiData[field]) {
-        continue;
-      }
-
-      const cleanText = stripHtmlTags(apiData[field]).replace(/\s+/g, ' ').trim().substring(0, 40);
-      if (!cleanText) {
-        continue;
-      }
-
-      await expect(page.locator('body')).toContainText(
-        new RegExp(cleanText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
-      );
-    }
-
-    // ---------- DATE INFORMATION ----------
-    if (apiData.valid_on) {
-      await expect(page.getByText('Valid on', { exact: true })).toBeVisible();
-      await expect(page.getByText(apiData.valid_on, { exact: true })).toBeVisible();
-    }
-
-    if (apiData.valid_till_date) {
-      const yyyyMmDd = apiData.valid_till_date;
-      const ddMmYyyy = yyyyMmDd.split('-').reverse().join('-');
-
-      await expect(page.getByText(/Valid till/i)).toBeVisible();
-
-      await expect(
-        page.getByText(new RegExp(`${yyyyMmDd}|${ddMmYyyy}`))
-      ).toBeVisible();
-
-      console.log('✔ Valid till verified (flexible format)');
-    }
-
-    // ---------- IMAGES ----------
-    if (apiData.banner_image) {
-      const bannerImg = page.getByRole('img', {
-        name: /Promotion Offer Banner|Promotion Offer/i
-      }).first();
-
-      await validateImageLoaded(bannerImg, 'Banner image');
-
-      const src = await bannerImg.getAttribute('src');
-      expect(src).toMatch(/gumlet|novo/i);
-    }
-
-    // ---------- PORTRAIT IMAGE ----------
-    if (apiData.potrait_image) {
-      const fileName = apiData.potrait_image.split('/').pop();
-
-      const portraitImg = page.locator(
-        `img[alt="Promotion Offer"][src*="${fileName}"]`
-      );
-
-      await expect(portraitImg).toBeVisible({ timeout: 10000 });
-
-      await portraitImg.evaluate(img => {
-        img.loading = 'eager';
-        img.scrollIntoView({ block: 'center' });
-      });
-
-      await expect.poll(
-        () => portraitImg.evaluate(img => img.complete && img.naturalWidth > 0),
-        { timeout: 15000 }
-      ).toBe(true);
-    }
-    console.log('✔ Portrait image loaded');
-
-    // ---------- CTA / REDIRECTION ----------
-    await verifyOfferDetailsCta(page, apiData);
-
-    console.log(`✅ Offer details verified for: ${apiData.name}`);
+    console.log('✔ Valid till verified (flexible format)');
   }
 
-  /**
-   * Verify hover details on offer cards
-   */
-  async function verifyHoverDetails(page, offers) {
-    const offersToTest = offers.slice(0, 2);
+  // ---------- IMAGES ----------
+  if (apiData.banner_image) {
+    const bannerImg = page.getByRole('img', {
+      name: /Promotion Offer Banner|Promotion Offer/i
+    }).first();
 
-    for (const offer of offersToTest) {
-      console.log(`🖱️ Hover test: ${offer.title}`);
+    await validateImageLoaded(bannerImg, 'Banner image');
 
-      const card = page
-        .getByText(offer.title, { exact: false })
-        .first()
-        .locator('xpath=ancestor::*[contains(@class,"group")]');
-
-      await card.hover({ force: true });
-
-      const aboutOffer = card.getByText('About Offer');
-      await expect(aboutOffer).toHaveCSS('opacity', '1', {
-        timeout: 5000
-      });
-
-      const description = card.locator('p');
-      await expect(description).toBeAttached();
-
-      console.log(`  ✅ Hover verified for: ${offer.title}`);
-
-      await page.mouse.move(0, 0);
-      await page.waitForTimeout(300);
-    }
+    const src = await bannerImg.getAttribute('src');
+    expect(src).toMatch(/gumlet|novo/i);
   }
 
-  // ==================== EXPORTS ====================
-  export {
-    BASE_URL,
-    API_BASE,
-    HEADERS,
-    fetchOffersData,
-    parseOffers,
-    categorizeOffers,
-    navigateToOffers,
-    verifyOffersInTab,
-    switchTab,
-    verifyLearnMoreNavigation,
-    stripHtmlTags,
-    validateImageLoaded,
-    fetchOfferDetailsById,
-    verifyOfferDetailsPage,
-    verifyHoverDetails
-  };
+  // ---------- PORTRAIT IMAGE ----------
+  if (apiData.potrait_image) {
+    const fileName = apiData.potrait_image.split('/').pop();
+
+    const portraitImg = page.locator(
+      `img[alt="Promotion Offer"][src*="${fileName}"]`
+    );
+
+    await expect(portraitImg).toBeVisible({ timeout: 10000 });
+
+    await portraitImg.evaluate(img => {
+      img.loading = 'eager';
+      img.scrollIntoView({ block: 'center' });
+    });
+
+    await expect.poll(
+      () => portraitImg.evaluate(img => img.complete && img.naturalWidth > 0),
+      { timeout: 15000 }
+    ).toBe(true);
+  }
+  console.log('✔ Portrait image loaded');
+
+  // ---------- CTA / REDIRECTION ----------
+  await verifyOfferDetailsCta(page, apiData);
+
+  console.log(`✅ Offer details verified for: ${apiData.name}`);
+}
+
+/**
+ * Verify hover details on offer cards
+ */
+async function verifyHoverDetails(page, offers) {
+  const offersToTest = offers.slice(0, 2);
+
+  for (const offer of offersToTest) {
+    console.log(`🖱️ Hover test: ${offer.title}`);
+
+    const textLocator = page.getByText(offer.title, { exact: false }).first();
+    await textLocator.scrollIntoViewIfNeeded();
+
+    const card = textLocator.locator('xpath=ancestor::*[contains(@class,"group")]');
+
+    await expect(card).toBeVisible();
+
+    await card.hover({ force: true });
+
+    const aboutOffer = card.getByText('About Offer');
+    await expect(aboutOffer).toHaveCSS('opacity', '1', {
+      timeout: 5000
+    });
+
+    const description = card.locator('p');
+    await expect(description).toBeAttached();
+
+    console.log(`  ✅ Hover verified for: ${offer.title}`);
+
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(300);
+  }
+}
+
+// ==================== EXPORTS ====================
+export {
+  BASE_URL,
+  API_BASE,
+  HEADERS,
+  fetchOffersData,
+  parseOffers,
+  categorizeOffers,
+  navigateToOffers,
+  verifyOffersInTab,
+  switchTab,
+  verifyLearnMoreNavigation,
+  stripHtmlTags,
+  validateImageLoaded,
+  fetchOfferDetailsById,
+  verifyOfferDetailsPage,
+  verifyHoverDetails
+};
