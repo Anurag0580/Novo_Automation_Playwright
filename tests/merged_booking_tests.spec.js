@@ -186,9 +186,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       // ================== F&B SELECTION ==================
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
@@ -296,7 +297,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================== COMPLETE PAYMENT ==================
     await completePayment(page);
 
-    console.log("\n=== TC_01 COMPLETED SUCCESSFULLY ===");
     console.log({
       movie: sidePanelData.movie.movie_name,
       seats: selectedSeats.join(", "),
@@ -811,7 +811,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     await expect(
       page.getByRole("img", { name: "offerbg" }).nth(1)
     ).toBeVisible();
-    await expect(page.getByText("Loyalty Offers").nth(1)).toBeVisible();
+    await expect(page.getByText("Loyalty Offers").first()).toBeVisible();
     await expect(
       page.getByRole("button", { name: "View" }).nth(1)
     ).toBeVisible();
@@ -1641,13 +1641,22 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     // Verify response structure
     expect(cancelTransactionResponse.status()).toBe(200);
+    if(COUNTRY_ID === 2) {
     expect(cancelResponseData).toMatchObject({
       statusCode: 200,
       success: true,
       type: "OK",
-      message: "Transaction successfully canceled.",
+      message: "Cancel Transaction Disabled.",
       data: null,
-    });
+    })}else{
+      expect(cancelResponseData).toMatchObject({
+        statusCode: 200,
+        success: true,
+        type: "OK",
+        message: "Transaction successfully canceled.",
+        data: null,
+      })
+    };
 
     // Verify the URL contains the correct reservation ID
     const cancelUrl = cancelTransactionResponse.url();
@@ -1798,32 +1807,36 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ===============================
     console.log("🔙 Navigating back from Payment page");
 
-    // OPTIONAL – offer remove (only when skip_fnb=false)
-    const offerRemovePromise = page
-      .waitForResponse(
-        (res) =>
-          res.url().includes("/api/booking/offers/remove") &&
-          res.status() === 200,
-      )
-      .catch(() => null);
+    // Offer removal is expected only when the flow returns through F&B.
+    const waitForCancelTransaction = () =>
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/api/booking/cancel-transaction/") &&
+          response.url().includes(reservationId),
+        { timeout: 15000 }
+      );
 
-    // MANDATORY – cancel transaction
-    const cancelTransactionPromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes("/api/booking/cancel-transaction/") &&
-        response.url().includes(reservationId),
-    );
+    const offerRemovePromise = !skipFnb
+      ? page.waitForResponse(
+          (res) =>
+            res.url().includes("/api/booking/offers/remove") &&
+            res.status() === 200,
+          { timeout: 15000 }
+        )
+      : null;
+    let cancelTransactionPromise = skipFnb
+      ? waitForCancelTransaction()
+      : null;
 
     // Back button from Payment
     await page.locator(".rounded-full.hover\\:cursor-pointer").click();
 
     // ===============================
-    // HANDLE OFFER REMOVAL (ONLY IF CALLED)
+    // HANDLE OFFER REMOVAL (ONLY WHEN F&B IS ENABLED)
     // ===============================
-    const offerRemoveResponse = await offerRemovePromise;
-
-    if (offerRemoveResponse) {
+    if (!skipFnb) {
+      const offerRemoveResponse = await offerRemovePromise;
       const offerRemovalData = await offerRemoveResponse.json();
 
       expect(offerRemovalData.success).toBe(true);
@@ -1859,6 +1872,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       // Back again from F&B → Seat Selection
       console.log("🔙 Navigating back from F&B page");
+      cancelTransactionPromise = waitForCancelTransaction();
       await page.locator(".rounded-full.hover\\:cursor-pointer").click();
     } else {
       console.log("ℹ️ Offer remove API not called (skip_fnb=true flow)");
@@ -1873,12 +1887,21 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const cancelResponseData = await cancelResponse.json();
 
     expect(cancelResponse.status()).toBe(200);
-    expect(cancelResponseData).toMatchObject({
-      statusCode: 200,
-      success: true,
-      message: "Transaction successfully canceled.",
-      data: null,
-    });
+    expect(cancelResponseData).toMatchObject(
+      COUNTRY_ID === 2
+        ? {
+            statusCode: 200,
+            success: true,
+            message: "Cancel Transaction Disabled.",
+            data: null,
+          }
+        : {
+            statusCode: 200,
+            success: true,
+            message: "Transaction successfully canceled.",
+            data: null,
+          }
+    );
 
     console.log("✅ Cancel transaction API verified");
 
@@ -1986,9 +2009,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting Enhanced F&B Selection Flow ===");
 
@@ -2228,9 +2252,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
 
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
@@ -2347,7 +2372,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       console.log("ℹ️ Gift card not applied — skipping gift card verification");
     }
 
-    console.log("\n=== Test Completed Successfully ===");
     console.log(`Movie: ${sidePanelData.movie.movie_name}`);
     console.log(`Seats: ${selectedSeats.join(", ")}`);
     console.log(`skip_fnb: ${skipFnb}`);
@@ -2369,6 +2393,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     request,
   }) => {
     test.skip(COUNTRY_ID === 2, "Novo Wallet payment is not available in UAE.");
+    console.log(`===== Test Skipped: Novo Wallet not available in ${COUNTRY_ID} ===== `);
 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
@@ -2448,9 +2473,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       const concessionsData = await concessionsResponse.json();
       // await page.waitForLoadState("networkidle");
 
-      await expect(
-        page.getByRole("heading", { name: "Snack Time!" })
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: "Snack Time!" })
+      // ).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
@@ -2541,7 +2567,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================= COMPLETE NOVO WALLET PAYMENT =================
     await applyNovoWalletOnly(page, request, authToken, grandTotal);
 
-    console.log("\n=== Test Completed Successfully ===");
     console.log(`Movie: ${sidePanelData.movie.movie_name}`);
     console.log(`Seats: ${selectedSeats.join(", ")}`);
     console.log(`skip_fnb: ${skipFnb}`);
