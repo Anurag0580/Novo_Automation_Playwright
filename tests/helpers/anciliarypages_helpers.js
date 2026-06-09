@@ -1,11 +1,5 @@
 import { expect } from "@playwright/test";
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
 /**
  * Wait for page to load completely

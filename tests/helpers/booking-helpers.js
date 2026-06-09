@@ -1,11 +1,14 @@
 import { expect, request as playwrightRequest } from "@playwright/test";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  COUNTRY_NAME,
+  CURRENCY,
+} from "./envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error("❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env");
-}
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 
 const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
 const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
@@ -21,7 +24,7 @@ if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
 export async function fetchMoviesFromAPI(request) {
   try {
     const response = await request.get(
-      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=${COUNTRY_ID}&channel=web`
     );
     if (!response.ok()) return [];
     const responseData = await response.json();
@@ -109,7 +112,7 @@ export async function getMovieDetails(page, request, selectedMovie) {
   const apiResponse = await request.get(
     `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
-    )}?country_id=1&channel=web`
+    )}?country_id=${COUNTRY_ID}&channel=web`
   );
   const movieData = await apiResponse.json();
   return { movie: movieData.data, movieId, movieSlug };
@@ -227,9 +230,9 @@ export async function verifyMovieDetailsPageLoyalty(page, movie) {
 
 export async function dynamicBooking(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -238,7 +241,7 @@ export async function dynamicBooking(page, movieId) {
         dates.find((date) => new Date(date).getDay() === 3) || dates[0];
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
       const sessions = sessionsData.data.sessions[selectedDate];
@@ -268,7 +271,7 @@ export async function dynamicBooking(page, movieId) {
         experienceName: twoDExperienceName,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   const selectedDate = new Date(bookingData.selectedDate);
@@ -289,9 +292,9 @@ export async function dynamicBooking(page, movieId) {
 
 export async function dynamicBookingLoyalty(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -305,7 +308,7 @@ export async function dynamicBookingLoyalty(page, movieId) {
       }
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
       const sessions = sessionsData.data.sessions[selectedDate];
@@ -319,7 +322,7 @@ export async function dynamicBookingLoyalty(page, movieId) {
         debugSession: firstSession,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   console.log("Debug Session Object:", bookingData.debugSession);
@@ -354,9 +357,9 @@ export async function dynamicBookingLoyalty(page, movieId) {
 
 export async function dynamicBookingBankOffer(page, movieId) {
   const bookingData = await page.evaluate(
-    async ({ movieId, BACKEND_URL }) => {
+    async ({ movieId, BACKEND_URL, COUNTRY_ID }) => {
       const datesRes = await fetch(
-        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/available-dates/${movieId}/?country_id=${COUNTRY_ID}&channel=web`
       );
       const datesData = await datesRes.json();
       const dates = datesData.data.available_dates;
@@ -370,7 +373,7 @@ export async function dynamicBookingBankOffer(page, movieId) {
       }
 
       const sessionsRes = await fetch(
-        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=1&channel=web`
+        `${BACKEND_URL}/api/home/sessions/${movieId}/date/${selectedDate}?cinemaId=null&languageId=&timing=&formatId=&country_id=${COUNTRY_ID}&channel=web`
       );
       const sessionsData = await sessionsRes.json();
 
@@ -386,7 +389,7 @@ export async function dynamicBookingBankOffer(page, movieId) {
         debugSession: firstSession,
       };
     },
-    { movieId, BACKEND_URL }
+    { movieId, BACKEND_URL, COUNTRY_ID }
   );
 
   console.log("Debug Session Object:", bookingData.debugSession);
@@ -420,6 +423,23 @@ export async function dynamicBookingBankOffer(page, movieId) {
 // AUTHENTICATION HELPERS
 // ============================================================================
 
+async function dismissAgeRatingPopup(page) {
+  const confirmButton = page.getByRole("button", {
+    name: "Confirm",
+    exact: true,
+  });
+  const ageRatingPopup = page
+    .locator("div.fixed.inset-0")
+    .filter({ hasText: "Age Restriction" })
+    .filter({ has: confirmButton })
+    .first();
+
+  await expect(ageRatingPopup).toBeVisible({ timeout: 10000 });
+  await expect(confirmButton).toBeEnabled();
+  await confirmButton.click();
+  await expect(ageRatingPopup).toBeHidden({ timeout: 10000 });
+}
+
 export async function loginAndCaptureTokenBooking(page) {
   let authToken = null;
 
@@ -444,9 +464,10 @@ export async function loginAndCaptureTokenBooking(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-    timeout: 15000,
-  });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
+  //   timeout: 15000,
+  // });
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // Wait until token is captured
   await expect.poll(() => authToken, { timeout: 10000 }).toBeTruthy();
@@ -461,12 +482,7 @@ export async function loginAndCaptureTokenBooking(page) {
     localStorage.setItem("authorization_token", token);
   }, authToken);
 
-  // 🔐 MANDATORY Confirm popup
-  await expect(page.getByRole("button", { name: "Confirm" })).toBeVisible({
-    timeout: 10000,
-  });
-
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
 
   return authToken;
 }
@@ -515,7 +531,8 @@ export async function loginAndCaptureTokenLoyalty(page) {
     }
   }
 
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // ✅ Inject token into localStorage if captured
   if (authToken) {
@@ -547,14 +564,13 @@ export async function loginAndCaptureTokenLoyalty(page) {
     });
 
     const ratingResponse = await apiContext.post(
-      "/api/booking/rating?for_seven_star=false&country_id=1&channel=web",
+      `/api/booking/rating?for_seven_star=false&country_id=${COUNTRY_ID}&channel=web`,
       { data: { search: "PG15" } }
     );
     console.log("Rating Status:", ratingResponse.status());
   }
 
-  await expect(page.locator("body")).toContainText("Please! Note");
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
   page.off("request", tokenListener);
 
   return authToken;
@@ -579,9 +595,10 @@ export async function login(page, email, password) {
     .getByRole("textbox", { name: "Enter your password" })
     .fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-    timeout: 15000,
-  });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
+  //   timeout: 15000,
+  // });
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 }
 
 export async function injectAuthToken(page, authToken) {
@@ -601,10 +618,7 @@ export async function injectAuthToken(page, authToken) {
 }
 
 export async function confirmAgeRating(page, tokenListener) {
-  await expect(page.locator("body")).toContainText("Please! Note", {
-    timeout: 10000,
-  });
-  await page.getByRole("button", { name: "Confirm" }).click();
+  await dismissAgeRatingPopup(page);
   page.off("request", tokenListener);
 }
 
@@ -619,7 +633,7 @@ export async function sidePanelVerification(
   cinemaId
 ) {
   const sidePanelApi = await request.get(
-    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -643,7 +657,7 @@ export async function sidePanelVerification(
 
 export async function verifySidePanel(page, request, sessionId, cinemaId) {
   const sidePanelApi = await request.get(
-    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const sidePanelData = await sidePanelApi.json();
   const data = sidePanelData.data;
@@ -675,7 +689,7 @@ export async function verifySidePanel(page, request, sessionId, cinemaId) {
 
 export async function getSeatLayout(page, request, sessionId, cinemaId) {
   const seatLayoutResponse = await request.get(
-    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -684,7 +698,9 @@ export async function getSeatLayout(page, request, sessionId, cinemaId) {
     { timeout: 10000 }
   );
   await expect(
-    page.getByText(new RegExp(`${layout.areas[0].name} \\(QAR`))
+    page.getByText(
+      new RegExp(`${escapeRegExp(layout.areas[0].name)} \\(${ESCAPED_CURRENCY}`)
+    )
   ).toBeVisible({ timeout: 10000 });
   await expect(
     page.getByText(`Screen ${layout.screenName}`, { exact: true })
@@ -701,7 +717,7 @@ export async function selectSeats(
   seatCount = 1
 ) {
   const seatLayoutResponse = await request.get(
-    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+    `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
   );
   const seatLayoutData = await seatLayoutResponse.json();
   const layout = seatLayoutData.data;
@@ -857,7 +873,7 @@ export async function selectSeatsWithAreaCategory(page, layout, seatCount = 4) {
     "\nClicked Seats with Details:",
     Array.from(seatPriceMap.entries()).map(([seat, info]) => ({
       seat,
-      price: `QAR ${info.price}`,
+      price: `${CURRENCY} ${info.price}`,
       area: info.areaName,
       categoryCode: info.areaCategoryCode,
     }))
@@ -984,7 +1000,7 @@ export async function verifyPricesInPanel(
   totalExpectedPrice
 ) {
   for (const [areaName, areaInfo] of areaGroupedSeats) {
-    const expectedPriceText = `QAR ${areaInfo.unitPrice.toFixed(2)} x ${
+    const expectedPriceText = `${CURRENCY} ${areaInfo.unitPrice.toFixed(2)} x ${
       areaInfo.count
     }`;
 
@@ -995,7 +1011,7 @@ export async function verifyPricesInPanel(
       console.log(`✓ Verified price for ${areaName}: ${expectedPriceText}`);
     } catch {
       const alternativePriceRegex = new RegExp(
-        `QAR\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
+        `${ESCAPED_CURRENCY}\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
           areaInfo.count
         }`
       );
@@ -1008,8 +1024,8 @@ export async function verifyPricesInPanel(
 
   const totalPriceFormatted =
     totalExpectedPrice % 1 === 0
-      ? `QAR ${Math.floor(totalExpectedPrice)}`
-      : `QAR ${totalExpectedPrice.toFixed(2)}`;
+      ? `${CURRENCY} ${Math.floor(totalExpectedPrice)}`
+      : `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`;
 
   try {
     await expect(page.locator("body")).toContainText(totalPriceFormatted, {
@@ -1019,12 +1035,14 @@ export async function verifyPricesInPanel(
   } catch {
     try {
       await expect(page.locator("body")).toContainText(
-        `QAR ${totalExpectedPrice.toFixed(2)}`,
+        `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`,
         { timeout: 5000 }
       );
       console.log(`✓ Verified total price (decimal format)`);
     } catch {
-      const priceRegex = new RegExp(`QAR\\s*${totalExpectedPrice}(?:\\.00)?`);
+      const priceRegex = new RegExp(
+        `${ESCAPED_CURRENCY}\\s*${totalExpectedPrice}(?:\\.00)?`
+      );
       await expect(page.locator("body")).toContainText(priceRegex, {
         timeout: 5000,
       });
@@ -1037,8 +1055,31 @@ export async function verifyPricesInPanel(
 // PAYMENT HELPERS
 // ============================================================================
 
+export async function verifyCyberSourceSdkLoaded(page) {
+  const cybersourceFrame = page.frameLocator('iframe[id="__buttonlist"]');
+  const checkoutButton = cybersourceFrame.getByRole("button", {
+    name: /Checkout with card/i,
+  });
+
+  await expect(checkoutButton).toBeVisible({ timeout: 30000 });
+
+  const incompatibleMessage = cybersourceFrame.getByText(
+    /Browser not compatible\.?/i
+  );
+  await expect(incompatibleMessage).toHaveCount(0, { timeout: 3000 });
+
+  console.log(
+    `✅ CyberSource SDK loaded successfully for ${COUNTRY_NAME}: checkout launcher is visible`
+  );
+}
+
 export async function completePayment(page) {
   try {
+    if (COUNTRY_ID === 2) {
+      await verifyCyberSourceSdkLoaded(page);
+      return;
+    }
+
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1102,9 +1143,11 @@ export async function fillPaymentDetails(page) {
 
 export async function verifyPaymentPageBasics(page, sidePanelApiData) {
   await expect(page).toHaveURL(/\/payment/);
-  await expect(
-    page.getByRole("heading", { name: "Payment Options" })
-  ).toBeVisible();
+  if (COUNTRY_ID !== 2) {
+    await expect(
+      page.getByRole("heading", { name: "Payment Options" })
+    ).toBeVisible();
+  }
 
   const paymentSidePanel = page
     .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1127,6 +1170,11 @@ export async function verifyPaymentPageBasics(page, sidePanelApiData) {
 
 export async function verifyCreditCardOption(page) {
   try {
+    if (COUNTRY_ID === 2) {
+      await verifyCyberSourceSdkLoaded(page);
+      return;
+    }
+
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1201,7 +1249,7 @@ export async function completePaymentWithGiftCard(
 
   // 2️⃣ Fetch gift cards from API
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1324,7 +1372,7 @@ export async function applyAndRemoveGiftCardPayment(
 
   // ------------------ Fetch gift cards (API) ------------------
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1470,7 +1518,7 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
 
   // ------------------ Fetch gift cards ------------------
   const giftCardResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/gift-card/send-received?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: String(authToken),
@@ -1568,11 +1616,13 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
   await expect(appliedButton).toBeDisabled();
 
   // ------------------ Switch to Credit Card ------------------
-  const creditCardOption = page
-    .locator("div")
-    .filter({ hasText: /^Credit Card$/ })
-    .first();
-  await creditCardOption.click();
+  if (COUNTRY_ID !== 2) {
+    const creditCardOption = page
+      .locator("div")
+      .filter({ hasText: /^Credit Card$/ })
+      .first();
+    await creditCardOption.click();
+  }
   await completePayment(page);
 
   return {
@@ -1601,7 +1651,7 @@ export async function applyNovoWalletOnly(
 
   // ------------------ 1️⃣ CHECK WALLET BALANCE (API) ------------------
   const checkBalanceResponse = await request.get(
-    `${BACKEND_URL}/api/gifts-wallets/wallet/check-balance?country_id=1&channel=web`,
+    `${BACKEND_URL}/api/gifts-wallets/wallet/check-balance?country_id=${COUNTRY_ID}&channel=web`,
     {
       headers: {
         Authorization: authToken,
@@ -1873,7 +1923,7 @@ export async function setupTest(page, request) {
   const apiResponse = await request.get(
     `${BACKEND_URL}/api/home/movie-details/${movieId},${encodeURIComponent(
       movieSlug
-    )}?country_id=1&channel=web`
+    )}?country_id=${COUNTRY_ID}&channel=web`
   );
   const movieData = await apiResponse.json();
   const movie = movieData.data;

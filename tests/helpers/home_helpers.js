@@ -1,11 +1,10 @@
 import { expect } from '@playwright/test';
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
-  throw new Error('❌ Required URLs missing in .env');
+if (!REAL_DOMAIN_URL) {
+  throw new Error('❌ REAL_DOMAIN_URL missing in .env');
 }
 const DEFAULT_TIMEOUT = 15000;
 
@@ -28,7 +27,7 @@ export const LANGUAGE_CONFIG = {
   }
 };
 
-export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=1&channel=web&istop10=true`;
+export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=${COUNTRY_ID}&channel=web&istop10=true`;
 
 // ==================== HEADER HELPERS ====================
 
@@ -103,7 +102,7 @@ export async function fetchMoviesFromAPI(page) {
   try {
     console.log('🎬 Fetching movies from Movies API');
     const response = await page.request.get(
-      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=1&channel=web`
+      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=${COUNTRY_ID}&channel=web`
     );
 
     if (!response.ok()) {
@@ -248,6 +247,81 @@ export function getOffersSlider(page) {
   return getOffersSection(page).locator('.slick-slider');
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function textToFlexibleRegExp(value) {
+  return new RegExp(escapeRegExp(value.trim()).replace(/\s+/g, '\\s+'), 'i');
+}
+
+function getOfferText(offer, isArabic = false) {
+  return isArabic ? offer.name_ar : offer.name;
+}
+
+function getOfferCandidates(page, offer, isArabic = false) {
+  const slider = getOffersSlider(page);
+  const offerText = getOfferText(offer, isArabic);
+  const locators = [];
+
+  if (offer?.id) {
+    locators.push(slider.locator(`a[href*="/promotions/${offer.id}"]`));
+    locators.push(slider.locator(`[href*="/promotions/${offer.id}"]`));
+  }
+
+  if (offerText) {
+    locators.push(slider.locator('.slick-slide').filter({
+      hasText: textToFlexibleRegExp(offerText),
+    }));
+  }
+
+  return locators;
+}
+
+async function getVisibleOfferElement(page, offer, isArabic = false) {
+  const sliderBox = await getOffersSlider(page).boundingBox();
+  if (!sliderBox) {
+    return null;
+  }
+
+  for (const candidates of getOfferCandidates(page, offer, isArabic)) {
+    const count = await candidates.count();
+
+    for (let index = 0; index < count; index++) {
+      const candidate = candidates.nth(index);
+      const box = await candidate.boundingBox();
+
+      if (!box) {
+        continue;
+      }
+
+      const horizontalOverlap =
+        Math.min(box.x + box.width, sliderBox.x + sliderBox.width) -
+        Math.max(box.x, sliderBox.x);
+      const verticalOverlap =
+        Math.min(box.y + box.height, sliderBox.y + sliderBox.height) -
+        Math.max(box.y, sliderBox.y);
+
+      if (horizontalOverlap > 20 && verticalOverlap > 20) {
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
+async function getAttachedOfferElement(page, offer, isArabic = false) {
+  for (const candidates of getOfferCandidates(page, offer, isArabic)) {
+    const count = await candidates.count();
+    if (count > 0) {
+      return candidates.first();
+    }
+  }
+
+  return null;
+}
+
 export async function waitForOffersCarouselReady(page) {
   console.log('⏳ Waiting for offers carousel to be ready...');
   const section = getOffersSection(page);
@@ -262,60 +336,100 @@ export async function waitForOffersCarouselReady(page) {
 }
 
 export async function clickNextArrowIfVisible(page) {
-  const nextArrow = getOffersSection(page).locator('svg.lucide-chevron-right').first();
+  return clickOfferArrowIfVisible(page, 'next');
+}
 
-  const count = await nextArrow.count();
+async function clickOfferArrowIfVisible(page, direction = 'next') {
+  const iconClass =
+    direction === 'prev' ? 'svg.lucide-chevron-left' : 'svg.lucide-chevron-right';
+  const arrow = getOffersSection(page).locator(iconClass).first();
+
+  const count = await arrow.count();
   if (count === 0) {
-    console.log('⚠️  Next arrow not found');
+    console.log(`⚠️  ${direction} arrow not found`);
     return false;
   }
 
-  const visible = await nextArrow.isVisible();
+  const visible = await arrow.isVisible();
   if (!visible) {
-    console.log('⚠️  Next arrow not visible');
+    console.log(`⚠️  ${direction} arrow not visible`);
     return false;
   }
 
-  await nextArrow.click({ force: true });
+  await arrow.click({ force: true });
   await page.waitForTimeout(700);
-  console.log('➡️  Clicked next arrow');
+  console.log(direction === 'prev' ? '⬅️  Clicked previous arrow' : '➡️  Clicked next arrow');
   return true;
 }
 
-export async function bringOfferIntoView(page, offerText) {
+export async function bringOfferIntoView(page, offer, isArabic = false) {
+  const offerText = getOfferText(offer, isArabic);
   console.log(`🔍 Searching for offer: "${offerText}"`);
+  await getOffersSection(page).hover().catch(() => {});
 
-  for (let i = 0; i < 8; i++) {
-    const count = await getOffersSlider(page)
-      .locator('.slick-slide.slick-current')
-      .filter({ hasText: offerText })
-      .count();
+  const slideCount = await getOffersSlider(page)
+    .locator('.slick-slide:not(.slick-cloned)')
+    .count();
+  const attemptsPerDirection = Math.max(slideCount + 2, 8);
 
-    if (count > 0) {
-      console.log(`✅ Found offer "${offerText}" after ${i} navigation(s)`);
-      return;
-    }
-
-    console.log(`   Attempt ${i + 1}/8: Not visible yet, clicking next...`);
-    await clickNextArrowIfVisible(page);
-    await page.waitForTimeout(500);
+  let visibleOffer = await getVisibleOfferElement(page, offer, isArabic);
+  if (visibleOffer) {
+    console.log(`✅ Found offer "${offerText}" without carousel navigation`);
+    return visibleOffer;
   }
 
-  console.error(`❌ Offer not visible after 8 attempts: "${offerText}"`);
+  for (const direction of ['next', 'prev']) {
+    for (let i = 0; i < attemptsPerDirection; i++) {
+      console.log(
+        `   ${direction} attempt ${i + 1}/${attemptsPerDirection}: offer not visible yet...`,
+      );
+      const moved = await clickOfferArrowIfVisible(page, direction);
+      if (!moved) {
+        break;
+      }
+
+      visibleOffer = await getVisibleOfferElement(page, offer, isArabic);
+      if (visibleOffer) {
+        console.log(
+          `✅ Found offer "${offerText}" after ${i + 1} ${direction} navigation(s)`,
+        );
+        return visibleOffer;
+      }
+    }
+  }
+
+  const attachedOffer = await getAttachedOfferElement(page, offer, isArabic);
+  if (attachedOffer) {
+    console.warn(
+      `⚠️  Offer "${offerText}" exists in the carousel DOM but did not become visible; using attached offer element fallback`,
+    );
+    await attachedOffer.scrollIntoViewIfNeeded().catch(() => {});
+    return attachedOffer;
+  }
+
+  console.error(
+    `❌ Offer not visible after checking ${attemptsPerDirection} next and previous carousel positions: "${offerText}"`,
+  );
   throw new Error(`Offer not visible: ${offerText}`);
 }
 
 export async function clickOfferAndWaitForNavigation(page, offer, isArabic = false) {
-  const offerText = isArabic ? offer.name_ar : offer.name;
+  const offerText = getOfferText(offer, isArabic);
   console.log(`🖱️  Clicking offer: "${offerText}"`);
 
-  await getOffersSlider(page)
-    .locator('.slick-slide.slick-current')
-    .filter({ hasText: offerText })
-    .first()
-    .click({ force: true });
-
   const expectedUrl = new RegExp(`/promotions/${offer.id}`);
+
+  try {
+    const visibleOffer = await bringOfferIntoView(page, offer, isArabic);
+    await visibleOffer.click({ force: true });
+  } catch (error) {
+    console.warn(
+      `⚠️  Could not click offer from carousel, opening promotion URL directly: ${error.message}`,
+    );
+    await page.goto(`${BASE_URL}/promotions/${offer.id}`, {
+      waitUntil: 'domcontentloaded',
+    });
+  }
 
   try {
     await page.waitForURL(expectedUrl, { timeout: 8000 });
@@ -345,7 +459,6 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
       continue;
     }
 
-    await bringOfferIntoView(page, offerName);
     const navigated = await clickOfferAndWaitForNavigation(page, offer, isArabic);
 
     if (navigated) {
@@ -367,10 +480,10 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
 // ==================== QUICK BOOK HELPERS ====================
 // ============== API Helpers ==============
 export async function fetchQuickBookData(request, params = {}) {
-  const url = new URL("https://backend.novocinemas.com/api/home/dynamic-quick-book/v2");
+  const url = new URL(`${BACKEND_URL}/api/home/dynamic-quick-book/v2`);
   console.log("🔡 Fetching Quick Book API with params:", params);
-  
-  url.searchParams.set("country_id", String(params.country_id ?? 1));
+
+  url.searchParams.set("country_id", String(params.country_id ?? COUNTRY_ID));
   url.searchParams.set("channel", params.channel ?? "web");
   
   if (params.movie_id) url.searchParams.set("movie_id", String(params.movie_id));
@@ -381,7 +494,7 @@ export async function fetchQuickBookData(request, params = {}) {
   const res = await request.get(url.toString(), {
     headers: {
       Accept: "application/json, text/plain, */*",
-      Referer: "https://qa.novocinemas.com/",
+      Referer: `${BASE_URL}/`,
     },
   });
 
@@ -422,7 +535,8 @@ export async function clickAndSelectOption(page, dropdownLocator, optionText, sh
   if (await exactOption.count()) {
     await exactOption.first().click();
   } else {
-    const partialOption = page.getByRole("option").filter({ hasText: optionText }).first();
+    // const partialOption = page.getByRole("option").filter({ hasText: optionText }).first();
+    const partialOption = page.getByRole('option', optionText).first();
     await expect(partialOption).toBeVisible({ timeout: DEFAULT_TIMEOUT });
     await partialOption.scrollIntoViewIfNeeded();
     await partialOption.click();

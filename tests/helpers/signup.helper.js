@@ -1,11 +1,5 @@
 import {expect} from '@playwright/test';
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-const Email = process.env.LOGIN_EMAIL;
-const Password = process.env.LOGIN_PASSWORD;
-const Phone = process.env.LOGIN_PHONE;
+import { BASE_URL, BACKEND_URL } from "./envConfig.js";
 
 async function dismissHomePopupIfPresent(page) {
   const poster = page.getByRole('img', { name: 'Promotional Poster' }).first();
@@ -54,7 +48,7 @@ async function dismissHomePopupIfPresent(page) {
 /**
  * Navigate to Sign Up page from Home
  */
-async function navigateToSignup(page) {
+export async function navigateToSignup(page) {
   await page.goto(`${BASE_URL}/home`, {
     waitUntil: 'domcontentloaded'
   });
@@ -71,7 +65,7 @@ async function navigateToSignup(page) {
 /**
  * Generate dynamic user data for signup
  */
-function generateSignupUser() {
+export function generateSignupUser() {
   const timestamp = Date.now();
 
   return {
@@ -92,7 +86,7 @@ function generateSignupUser() {
 /**
  * Fill signup form with provided user data
  */
-async function fillSignupForm(page, user) {
+export async function fillSignupForm(page, user) {
   await page.getByRole('textbox', { name: /first name/i }).fill(user.firstName);
   await page.getByRole('textbox', { name: /last name/i }).fill(user.lastName);
   await page.getByRole('textbox', { name: 'Enter your email' }).fill(user.email);
@@ -124,9 +118,3 @@ await page.getByRole('option', { name: user.dob.day }).click();
   // Newsletter
   await page.getByRole('checkbox').check();
 }
-
-module.exports = {
-  navigateToSignup,
-  generateSignupUser,
-  fillSignupForm
-};

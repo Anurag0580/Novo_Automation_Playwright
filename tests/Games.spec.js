@@ -17,9 +17,19 @@ import {
   verifyTotalInCheckout,
   verifyConcessionItemsInCheckout,
 } from "./helpers/games-flow-helpers.js";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  COUNTRY_NAME,
+  CURRENCY,
+  FEATURES,
+} from "./helpers/envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+if(!FEATURES.games) {
+  console.warn(`⚠️ Games flow is disabled for ${COUNTRY_NAME}. Skipping Games.spec.js tests.`);
+}
+test.skip(!FEATURES.games, "Games flow is not available for this country");
 
 function getLowestPrice(game) {
   const allPrices = game.event_cinema.flatMap(cinema =>
@@ -104,10 +114,10 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
   test.beforeEach(async ({ page, request }) => {
     // Fetch API data before navigating
     const getGamesApi = await request.get(
-      `${BACKEND_URL}/api/booking/get-games?country_id=1&channel=web`,
+      `${BACKEND_URL}/api/booking/get-games?country_id=${COUNTRY_ID}&channel=web`,
     );
     const gamesTemplateApi = await request.get(
-      `${BACKEND_URL}/api/booking/game-templates?key=/games&country_id=1&channel=web`,
+      `${BACKEND_URL}/api/booking/game-templates?key=/games&country_id=${COUNTRY_ID}&channel=web`,
     );
 
     expect(getGamesApi.ok()).toBeTruthy();
@@ -210,7 +220,7 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   // 3️⃣ Base Price visible
   // -----------------------------
   await expect(
-    page.getByText(`QAR ${basePrice}`)
+    page.getByText(`${CURRENCY} ${basePrice}`)
   ).toBeVisible();
 
   // -----------------------------
@@ -228,7 +238,7 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   }).first();
 
   const baseQtyContainer = bowlingCard.locator("div").filter({
-    hasText: new RegExp(`^1\\s*QAR\\s*${basePrice}`)
+    hasText: new RegExp(`^1\\s*${CURRENCY}\\s*${basePrice}`)
   }).first();
   await expect(baseQtyContainer).toBeVisible();
 
@@ -248,7 +258,7 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   }).first();
   await expect(qtySectionByTitle.getByText(String(updatedQty), { exact: true })).toBeVisible();
   const expectedPrice = basePrice * updatedQty;
-  await expect(bowlingCard.getByText(`QAR ${expectedPrice}`)).toBeVisible();
+  await expect(bowlingCard.getByText(`${CURRENCY} ${expectedPrice}`)).toBeVisible();
 
   let optionalTotal = 0;
   let optionalCount = 0;
@@ -280,7 +290,7 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
       firstOptionalName = item.name;
       firstOptionalPrice = optionalPrice;
     }
-    await expect(bowlingCard.getByText(`QAR ${optionalPrice}`)).toBeVisible();
+    await expect(bowlingCard.getByText(`${CURRENCY} ${optionalPrice}`)).toBeVisible();
   }
 
   // -----------------------------
@@ -336,16 +346,16 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   await gameDetailsHeader.click();
 
   await expect(page.getByText("No. of Games :").first()).toContainText(`No. of Games : ${updatedQty}`);
-  await expect(page.getByText(`QAR ${expectedPrice}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${expectedPrice}`, { exact: true }).first()).toBeVisible();
 
   if (firstOptionalName) {
     await expect(bookingDetailsPanel.getByText(`${firstOptionalName}: ${optionalCount}`)).toBeVisible();
-    await expect(bookingDetailsPanel.getByText(`QAR ${firstOptionalPrice}`, { exact: true })).toBeVisible();
+    await expect(bookingDetailsPanel.getByText(`${CURRENCY} ${firstOptionalPrice}`, { exact: true })).toBeVisible();
   }
 
   const expectedTicketAmount = Math.round(expectedPrice + optionalTotal);
   await expect(page.getByText("Ticket").first()).toBeVisible();
-  await expect(page.getByText("+ QAR").first()).toHaveText(`+ QAR ${expectedTicketAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).first()).toHaveText(`+ ${CURRENCY} ${expectedTicketAmount}`);
 
   await expect(page.getByText("Food & Beverages").nth(3)).toBeVisible();
   await page
@@ -356,17 +366,17 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   await expect(bookingDetailsPanel.getByText(addedItemName).first()).toBeVisible();
   await expect(
     bookingDetailsPanel.locator("div:visible").filter({
-      hasText: new RegExp(`^QAR\\s*${fbTracker.totalPrice.toFixed(2).replace(".", "\\.")}$`),
+      hasText: new RegExp(`^${CURRENCY}\\s*${fbTracker.totalPrice.toFixed(2).replace(".", "\\.")}$`),
     }).first(),
   ).toBeVisible();
 
   const expectedFnbAmount = Math.round(fbTracker.totalPrice);
   await expect(page.getByText("F&B").nth(1)).toBeVisible();
-  await expect(page.getByText("+ QAR").nth(1)).toHaveText(`+ QAR ${expectedFnbAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).nth(1)).toHaveText(`+ ${CURRENCY} ${expectedFnbAmount}`);
 
   const expectedTotalAmount = expectedTicketAmount + expectedFnbAmount;
   await expect(page.getByText("Total Price").first()).toBeVisible();
-  await expect(page.getByText(`QAR ${expectedTotalAmount}`).first()).toHaveText(`QAR ${expectedTotalAmount}`);
+  await expect(page.getByText(`${CURRENCY} ${expectedTotalAmount}`).first()).toHaveText(`${CURRENCY} ${expectedTotalAmount}`);
 
   // -----------------------------
   // 🔟 Continue to checkout + map sidepanel with only-concession API
@@ -391,7 +401,7 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
     true,
   );
   await verifyTotalInCheckout(checkoutPanel, apiTotalAmount);
-  console.log(`✅ Verified checkout panel amounts match only-concession API: Ticket QAR ${Math.round(apiTicketAmount)}, F&B QAR ${Math.round(apiFnbAmount)}, Total QAR ${Math.round(apiTotalAmount)}`);
+  console.log(`✅ Verified checkout panel amounts match only-concession API: Ticket ${CURRENCY} ${Math.round(apiTicketAmount)}, F&B ${CURRENCY} ${Math.round(apiFnbAmount)}, Total ${CURRENCY} ${Math.round(apiTotalAmount)}`);
 
   await completePayment(page);
 });
@@ -425,7 +435,7 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
     await expect(page.getByText(game.json.title)).toBeVisible();
   }
 
-  await expect(page.getByText(`QAR ${selectedBasePrice}`)).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${selectedBasePrice}`)).toBeVisible();
 
   const bowlingCard = page.locator("div:visible").filter({
     // has: page.getByRole("heading", { name: game.name }),
@@ -434,12 +444,12 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
   }).first();
 
   let baseQtyContainer = bowlingCard.locator("div:visible").filter({
-    hasText: new RegExp(`^1\\s*QAR\\s*${selectedBasePrice}`),
+    hasText: new RegExp(`^1\\s*${CURRENCY}\\s*${selectedBasePrice}`),
   }).first();
 
   if ((await baseQtyContainer.count()) === 0) {
     baseQtyContainer = bowlingCard.locator("div:visible").filter({
-      hasText: /^1\s*QAR\s*/,
+      hasText: new RegExp(`^1\\s*${CURRENCY}\\s*`),
       has: bowlingCard.locator("button:visible"),
     }).first();
   }
@@ -453,7 +463,7 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
   await expect(qtySectionByTitle.getByText(String(updatedQty), { exact: true }).first()).toBeVisible();
 
   const expectedPrice = selectedBasePrice;
-  await expect(bowlingCard.getByText(`QAR ${expectedPrice}`)).toBeVisible();
+  await expect(bowlingCard.getByText(`${CURRENCY} ${expectedPrice}`)).toBeVisible();
 
   if (game.json?.tnc) {
     await expect(page.getByText(game.json.tnc.split("|")[0]).first()).toBeVisible();
@@ -471,11 +481,11 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
   await gameDetailsHeader.click();
 
   await expect(page.getByText("No. of Games :").first()).toContainText(`No. of Games : ${updatedQty}`);
-  await expect(page.getByText(`QAR ${expectedPrice}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${expectedPrice}`, { exact: true }).first()).toBeVisible();
 
   const expectedTicketAmount = Math.round(expectedPrice);
   await expect(page.getByText("Ticket").first()).toBeVisible();
-  await expect(page.getByText("+ QAR").first()).toHaveText(`+ QAR ${expectedTicketAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).first()).toHaveText(`+ ${CURRENCY} ${expectedTicketAmount}`);
 
   const onlyConcessionData = await continueToCheckoutAndGetOnlyConcessionData(
     page,
@@ -522,7 +532,7 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
     await expect(page.getByText(game.json.title)).toBeVisible();
   }
 
-  await expect(page.getByText(`QAR ${basePrice}`)).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${basePrice}`)).toBeVisible();
 
   const billiardCard = page.locator("div").filter({
     // has: page.getByRole("heading", { name: game.name }),
@@ -530,7 +540,7 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
   }).first();
 
   const baseQtyContainer = billiardCard.locator("div").filter({
-    hasText: new RegExp(`^1\\s*QAR\\s*${basePrice}`),
+    hasText: new RegExp(`^1\\s*${CURRENCY}\\s*${basePrice}`),
   }).first();
   await expect(baseQtyContainer).toBeVisible();
 
@@ -546,7 +556,7 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
     has: page.getByText(game.json.title),
   }).first();
   await expect(qtySectionByTitle.getByText(String(updatedQty), { exact: true })).toBeVisible();
-  await expect(billiardCard.getByText(`QAR ${priceAtUpdatedQty}`)).toBeVisible();
+  await expect(billiardCard.getByText(`${CURRENCY} ${priceAtUpdatedQty}`)).toBeVisible();
 
   const expectedPrice = priceAtUpdatedQty;
 
@@ -580,11 +590,11 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
   await gameDetailsHeader.click();
 
   await expect(page.getByText(/Duration|No\. of Games/).first()).toContainText(String(updatedQty));
-  await expect(page.getByText(`QAR ${expectedPrice}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${expectedPrice}`, { exact: true }).first()).toBeVisible();
 
   const expectedTicketAmount = Math.round(expectedPrice);
   await expect(page.getByText("Ticket").first()).toBeVisible();
-  await expect(page.getByText("+ QAR").first()).toHaveText(`+ QAR ${expectedTicketAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).first()).toHaveText(`+ ${CURRENCY} ${expectedTicketAmount}`);
 
   await expect(page.getByText("Food & Beverages").nth(3)).toBeVisible();
   await page
@@ -595,17 +605,17 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
   await expect(bookingDetailsPanel.getByText(addedItemName).first()).toBeVisible();
   await expect(
     bookingDetailsPanel.locator("div:visible").filter({
-      hasText: new RegExp(`^QAR\\s*${fbTracker.totalPrice.toFixed(2).replace(".", "\\.")}$`),
+      hasText: new RegExp(`^${CURRENCY}\\s*${fbTracker.totalPrice.toFixed(2).replace(".", "\\.")}$`),
     }).first(),
   ).toBeVisible();
 
   const expectedFnbAmount = Math.round(fbTracker.totalPrice);
   await expect(page.getByText("F&B").nth(1)).toBeVisible();
-  await expect(page.getByText("+ QAR").nth(1)).toHaveText(`+ QAR ${expectedFnbAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).nth(1)).toHaveText(`+ ${CURRENCY} ${expectedFnbAmount}`);
 
   const expectedTotalAmount = expectedTicketAmount + expectedFnbAmount;
   await expect(page.getByText("Total Price").first()).toBeVisible();
-  await expect(page.getByText(`QAR ${expectedTotalAmount}`).first()).toHaveText(`QAR ${expectedTotalAmount}`);
+  await expect(page.getByText(`${CURRENCY} ${expectedTotalAmount}`).first()).toHaveText(`${CURRENCY} ${expectedTotalAmount}`);
 
   const onlyConcessionData = await continueToCheckoutAndGetOnlyConcessionData(
     page,
@@ -658,7 +668,7 @@ test("TC_GAMES_06 – Validate Billiard Direct Checkout with Base Pricing (No F&
     await expect(page.getByText(game.json.title)).toBeVisible();
   }
 
-  await expect(page.getByText(`QAR ${selectedPrice}`)).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${selectedPrice}`)).toBeVisible();
 
   const billiardCard = page.locator("div:visible").filter({
     // has: page.getByRole("heading", { name: game.name }),
@@ -666,19 +676,19 @@ test("TC_GAMES_06 – Validate Billiard Direct Checkout with Base Pricing (No F&
   }).first();
 
   let baseQtyContainer = billiardCard.locator("div:visible").filter({
-    hasText: new RegExp(`^1\\s*QAR\\s*${selectedPrice}`),
+    hasText: new RegExp(`^1\\s*${CURRENCY}\\s*${selectedPrice}`),
   }).first();
 
   if ((await baseQtyContainer.count()) === 0) {
     baseQtyContainer = billiardCard.locator("div:visible").filter({
-      hasText: /^1\s*QAR\s*/,
+      hasText: new RegExp(`^1\\s*${CURRENCY}\\s*`),
       has: billiardCard.locator("button:visible"),
     }).first();
   }
   await expect(baseQtyContainer).toBeVisible();
 
   await expect(baseQtyContainer.getByText(String(updatedQty), { exact: true }).first()).toBeVisible();
-  await expect(billiardCard.getByText(`QAR ${selectedPrice}`)).toBeVisible();
+  await expect(billiardCard.getByText(`${CURRENCY} ${selectedPrice}`)).toBeVisible();
 
   if (game.json?.tnc) {
     await expect(page.getByText(game.json.tnc.split("|")[0]).nth(1)).toBeVisible();
@@ -696,11 +706,11 @@ test("TC_GAMES_06 – Validate Billiard Direct Checkout with Base Pricing (No F&
   await gameDetailsHeader.click();
 
   await expect(page.getByText(/Duration|No\. of Games/).first()).toContainText(String(updatedQty));
-  await expect(page.getByText(`QAR ${selectedPrice}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(`${CURRENCY} ${selectedPrice}`, { exact: true }).first()).toBeVisible();
 
   const expectedTicketAmount = Math.round(selectedPrice);
   await expect(page.getByText("Ticket").first()).toBeVisible();
-  await expect(page.getByText("+ QAR").first()).toHaveText(`+ QAR ${expectedTicketAmount}`);
+  await expect(page.getByText(`+ ${CURRENCY}`).first()).toHaveText(`+ ${CURRENCY} ${expectedTicketAmount}`);
 
   const onlyConcessionData = await continueToCheckoutAndGetOnlyConcessionData(
     page,

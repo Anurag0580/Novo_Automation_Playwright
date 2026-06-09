@@ -1,9 +1,31 @@
 import { expect, request as playwrightRequest } from "@playwright/test";
-const BACKEND_BASE_URL = process.env.PROD_BACKEND_URL;
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  COUNTRY_NAME,
+  CURRENCY,
+} from "./envConfig.js";
 
-if (!BACKEND_BASE_URL || !process.env.PROD_FRONTEND_URL) {
-  throw new Error("❌ PROD_BACKEND_URL or PROD_FRONTEND_URL missing in env");
-}
+const BACKEND_BASE_URL = BACKEND_URL;
+const PRIMARY_BANK_OFFER =
+  COUNTRY_ID === 2
+    ? {
+        name: "Mashreq 50% off",
+        buttonName: /Mashreq 50% off/i,
+        cardBin:
+          process.env.UAE_BANK_OFFER_CARD_BIN ||
+          process.env.BANK_OFFER_CARD_BIN ||
+          "524136",
+      }
+    : {
+        name: "CBQ Offer",
+        buttonName: /CBQ Offer/i,
+        cardBin:
+          process.env.QATAR_BANK_OFFER_CARD_BIN ||
+          process.env.BANK_OFFER_CARD_BIN ||
+          "552400",
+      };
 
 // ============================================================================
 // LOYALTY OFFERS HELPERS
@@ -72,13 +94,13 @@ export async function verifyLoyaltyOffersAPI(
       authorization: bearerToken,
       accept: "application/json, text/plain, */*",
       "accept-language": "en-GB,en-US;q=0.9,en;q=0.8",
-      origin: process.env.PROD_FRONTEND_URL,
-      referer: `${process.env.PROD_FRONTEND_URL}/`,
+      origin: BASE_URL,
+      referer: `${BASE_URL}/`,
     },
   });
 
   try {
-    const apiUrl = `/api/booking/get-loyalty-ticket-types/cinemas/${numericCinemaId}/sessions/${numericSessionId}/userSessionId/${userSessionId}?country_id=1&channel=web`;
+    const apiUrl = `/api/booking/get-loyalty-ticket-types/cinemas/${numericCinemaId}/sessions/${numericSessionId}/userSessionId/${userSessionId}?country_id=${COUNTRY_ID}&channel=web`;
 
     console.log(`\n=== Calling Loyalty Offers API ===`);
     console.log(`Full URL: ${BACKEND_BASE_URL}${apiUrl}`);
@@ -145,7 +167,7 @@ export async function verifyLoyaltyOffersAPI(
     processedOffers.forEach((offer, index) => {
       console.log(`Offer ${index + 1}:`, {
         description: offer.description,
-        price: `QAR ${offer.pricePerTicket.toFixed(2)}`,
+        price: `${CURRENCY} ${offer.pricePerTicket.toFixed(2)}`,
         available: offer.availableQuantity,
         loyaltyOnly: offer.isLoyaltyOnly,
       });
@@ -179,7 +201,7 @@ export async function verifyBankOffers(page, request, sessionId, cinemaId) {
 
   const offersData = await request
     .get(
-      `${BACKEND_BASE_URL}/api/booking/offers/get/v2?cinemaId=${cinemaId}&sessionId=${sessionId}&country_id=1&channel=web`
+      `${BACKEND_BASE_URL}/api/booking/offers/get/v2?cinemaId=${cinemaId}&sessionId=${sessionId}&country_id=${COUNTRY_ID}&channel=web`
     )
     .then((r) => r.json());
 
@@ -198,18 +220,21 @@ export async function verifyBankOffers(page, request, sessionId, cinemaId) {
 }
 
 export function setupValidationInterceptors(page) {
-  const panEntriesPromise = page.waitForResponse(
-    (response) => {
-      const url = response.url();
-      const status = response.status();
-      return (
-        url.includes("vault.dibsy.one") &&
-        url.includes("pan-entries") &&
-        (status === 200 || status === 201)
-      );
-    },
-    { timeout: 20000 }
-  );
+  const panEntriesPromise =
+    COUNTRY_ID === 2
+      ? null
+      : page.waitForResponse(
+          (response) => {
+            const url = response.url();
+            const status = response.status();
+            return (
+              url.includes("vault.dibsy.one") &&
+              url.includes("pan-entries") &&
+              (status === 200 || status === 201)
+            );
+          },
+          { timeout: 20000 }
+        );
 
   const offerValidatePromise = page.waitForResponse(
     (response) =>
@@ -221,23 +246,12 @@ export function setupValidationInterceptors(page) {
   return { panEntriesPromise, offerValidatePromise };
 }
 
-export function setupDibsyPublicKeyInterceptor(page) {
-  if (COUNTRY_ID === 2) {
-    return null;
-  }
-
-  return page.waitForResponse(
-    (response) =>
-      response.url().includes("/api/payment/dibsy/public-key/") &&
-      response.status() === 200,
-    { timeout: 30000 }
-  );
-}
-
 export function generateCardNumber(cardBin = PRIMARY_BANK_OFFER.cardBin) {
   const p =
-    "552400" +
-    Array.from({ length: 9 }, () => Math.floor(Math.random() * 10)).join("");
+    cardBin +
+    Array.from({ length: 15 - cardBin.length }, () =>
+      Math.floor(Math.random() * 10)
+    ).join("");
   const s = (p + "0")
     .split("")
     .reverse()
@@ -252,17 +266,19 @@ export async function validateCard(
   panEntriesPromise,
   offerValidatePromise,
   cardBin = PRIMARY_BANK_OFFER.cardBin,
-  dibsyPublicKeyPromise = null,
-  offerPanel = page
+  offerCard = page
 ) {
-  const cardNumber = generateCardNumber();
-  console.log("Generated card number:", cardNumber);
+  const cardNumber = generateCardNumber(cardBin);
+  console.log(
+    `Generated ${COUNTRY_NAME} bank offer card number with BIN ${cardBin}:`,
+    cardNumber
+  );
 
-  await offerPanel
+  await offerCard
     .getByRole("textbox", { name: "Enter Card Number" })
     .first()
     .fill(cardNumber);
-  await offerPanel.getByRole("button", { name: "Validate" }).first().click();
+  await offerCard.getByRole("button", { name: "Validate" }).click();
   await page.waitForTimeout(1000);
 
   if (dibsyPublicKeyPromise) {
@@ -280,23 +296,29 @@ export async function validateCard(
   }
 
   let panEntriesData = null;
-  try {
-    const panEntriesResponse = await panEntriesPromise;
-    panEntriesData = await panEntriesResponse.json();
-  } catch (error) {
-    console.error("Failed to capture PAN entries response:", error.message);
-    const responses = [];
-    page.on("response", async (response) => {
-      if (response.url().includes("pan-entries")) {
-        responses.push(response);
+  if (panEntriesPromise) {
+    try {
+      const panEntriesResponse = await panEntriesPromise;
+      panEntriesData = await panEntriesResponse.json();
+    } catch (error) {
+      console.error("Failed to capture PAN entries response:", error.message);
+      const responses = [];
+      page.on("response", async (response) => {
+        if (response.url().includes("pan-entries")) {
+          responses.push(response);
+        }
+      });
+      await page.waitForTimeout(2000);
+      if (responses.length > 0) {
+        panEntriesData = await responses[0].json();
+      } else {
+        throw new Error("Could not capture PAN entries API response");
       }
-    });
-    await page.waitForTimeout(2000);
-    if (responses.length > 0) {
-      panEntriesData = await responses[0].json();
-    } else {
-      throw new Error("Could not capture PAN entries API response");
     }
+  } else {
+    console.log(
+      `${COUNTRY_NAME} uses CyberSource for bank offer validation; skipping Dibsy PAN entries capture`
+    );
   }
 
   if (panEntriesData) {
@@ -365,7 +387,7 @@ export function logOfferValidationResults(offerValidationData, panEntriesData) {
     offerValidationData.data?.isAllowed &&
     offerValidationData.data?.isBinValid
   ) {
-    console.log("✅ CBQ Offer validated successfully!");
+    console.log(`${PRIMARY_BANK_OFFER.name} validated successfully!`);
     return true;
   } else {
     console.warn(
@@ -376,10 +398,10 @@ export function logOfferValidationResults(offerValidationData, panEntriesData) {
 }
 
 export async function verifyOfferAppliedUI(page, offerValidationData) {
-  const finalPriceQAR = offerValidationData.data.priceData.final_price / 100;
+  const finalPrice = offerValidationData.data.priceData.final_price / 100;
   try {
     await page.waitForTimeout(2000);
-    await expect(page.locator("body")).toContainText(`QAR ${finalPriceQAR}`, {
+    await expect(page.locator("body")).toContainText(`${CURRENCY} ${finalPrice}`, {
       timeout: 5000,
     });
   } catch {
@@ -387,31 +409,29 @@ export async function verifyOfferAppliedUI(page, offerValidationData) {
   }
 }
 
-async function ensureBankOfferCardFormVisible(page) {
-  const offerToggle = page
+export async function validateCardFlow(page) {
+  const selectedOfferToggle = page
     .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
     .first();
-
-  await expect(offerToggle).toBeVisible({ timeout: 10000 });
-
-  if ((await offerToggle.getAttribute("aria-expanded")) !== "true") {
-    await offerToggle.click();
+  await expect(selectedOfferToggle).toBeVisible({
+    timeout: 10000,
+  });
+  if ((await selectedOfferToggle.getAttribute("aria-expanded")) !== "true") {
+    await selectedOfferToggle.click();
   }
+  await expect(selectedOfferToggle).toHaveAttribute("aria-expanded", "true");
 
-  const offerPanel = offerToggle.locator(
-    'xpath=ancestor::div[.//input[@placeholder="Enter Card Number"] and .//button[normalize-space()="Validate"]][1]'
-  );
-  const cardNumberInput = offerPanel
-    .getByRole("textbox", { name: "Enter Card Number" })
-    .first();
-
-  await expect(cardNumberInput).toBeVisible({ timeout: 10000 });
-  return offerPanel;
-}
-
-export async function validateCardFlow(page, dibsyPublicKeyPromise = null) {
+  const selectedOfferCard = selectedOfferToggle.locator("xpath=..");
+  await selectedOfferCard
+    .getByRole("button", { name: "Terms & Conditions" })
+    .click();
+  await page
+    .locator("div")
+    .filter({ hasText: /^Terms & Conditions:$/ })
+    .getByRole("button")
+    .click();
   await expect(
-    page.getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName }).first()
+    selectedOfferCard.getByRole("textbox", { name: "Enter Card Number" })
   ).toBeVisible({ timeout: 10000 });
   const offerPanel = await ensureBankOfferCardFormVisible(page);
 
@@ -422,8 +442,7 @@ export async function validateCardFlow(page, dibsyPublicKeyPromise = null) {
     panEntriesPromise,
     offerValidatePromise,
     PRIMARY_BANK_OFFER.cardBin,
-    dibsyPublicKeyPromise,
-    offerPanel
+    selectedOfferCard
   );
 
   await storeOfferValidationData(page, offerValidationData);
@@ -442,17 +461,41 @@ export async function validateCardFlow(page, dibsyPublicKeyPromise = null) {
 export async function handleBankOffersFlow(page, request, sessionId, cinemaId) {
   await verifyBankOffers(page, request, sessionId, cinemaId);
 
-  const dibsyPublicKeyPromise = setupDibsyPublicKeyInterceptor(page);
+  const dibsyPublicKeyPromise =
+    COUNTRY_ID === 1
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/payment/dibsy/public-key/") &&
+            response.status() === 200,
+          { timeout: 15000 }
+        )
+      : null;
 
   await page
     .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
     .first()
     .click();
-  console.log(
-    `Clicked ${PRIMARY_BANK_OFFER.name} - continuing to card validation flow...`
-  );
 
-  await validateCardFlow(page, dibsyPublicKeyPromise);
+  if (dibsyPublicKeyPromise) {
+    console.log(`Clicked ${PRIMARY_BANK_OFFER.name} - waiting for Dibsy API...`);
+    const dibsyResponse = await dibsyPublicKeyPromise;
+    const dibsyPublicKeyData = await dibsyResponse.json();
+
+    await page.evaluate(
+      ([publicKeyData]) => {
+        localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
+        localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
+        localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
+      },
+      [dibsyPublicKeyData]
+    );
+  } else {
+    console.log(
+      `Clicked ${PRIMARY_BANK_OFFER.name} - ${COUNTRY_NAME} uses CyberSource; skipping Dibsy public-key API`
+    );
+  }
+
+  await validateCardFlow(page);
 }
 
 export function setupPaymentInterceptors(page) {
@@ -997,13 +1040,35 @@ export async function verifyOffersPromotionsSection(
         .filter({ hasText: /^Offers & Promotions$/ })
         .first()
     ).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Bank Offers").first()).toBeVisible({
-      timeout: 5000,
-    });
+    const bankOffersTab = page
+      .getByText("Bank Offers", { exact: true })
+      .first();
+    await expect(bankOffersTab).toBeVisible({ timeout: 5000 });
 
     if (isOfferApplied && offerData) {
       const appliedOfferName = offerData.data.applicableOffer?.offer_name;
       if (appliedOfferName) {
+        const isBankOffersTabSelected = await bankOffersTab.evaluate(
+          (element) => {
+            const tab =
+              element.closest(
+                '[role="tab"], button, [aria-selected], [data-state]'
+              ) || element;
+            const className =
+              typeof tab.className === "string" ? tab.className : "";
+
+            return (
+              tab.getAttribute("aria-selected") === "true" ||
+              tab.getAttribute("data-state") === "active" ||
+              /\bbg-white\b|\btext-black\b/.test(className)
+            );
+          }
+        );
+
+        if (!isBankOffersTabSelected) {
+          await bankOffersTab.click();
+        }
+
         try {
           await expect(
             page.getByText(new RegExp(appliedOfferName, "i")).first()
@@ -1074,8 +1139,10 @@ export async function verifyFNBPageBasics(
     `\/fnb\/cinema\/${cinemaId}\/reservationId\/${reservationId}`
   );
   await expect(page).toHaveURL(expectedUrlPattern, { timeout: 15000 });
-  await page.waitForLoadState("networkidle");
-  await expect(page.getByRole("heading", { name: "Snack Time!" })).toBeVisible({
+  // await expect(page.getByRole("heading", { name: "Snack Time!" })).toBeVisible({
+  //   timeout: 10000,
+  // });
+  await expect(page.getByText("Snack Time!")).toBeVisible({
     timeout: 10000,
   });
 }

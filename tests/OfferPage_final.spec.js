@@ -12,20 +12,21 @@ import {
   API_BASE,
   HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
-
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = `${process.env.PROD_BACKEND_URL}/api/home`;
-
-if (!BASE_URL || !process.env.PROD_BACKEND_URL) {
-  throw new Error('❌ PROD_FRONTEND_URL or PROD_BACKEND_URL missing in env');
-}
+import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./helpers/envConfig.js";
 
 let backendData;
 let parsedOffers;
 
+function skipWhenNoCollectibleOffers() {
+  test.skip(
+    !parsedOffers?.collectible?.length,
+    `No collectible offers returned by API for country_id=${COUNTRY_ID}; Collectables tab is not expected.`
+  );
+}
+
 test.beforeAll(async ({ request }) => {
-  const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=1&channel=web`, { headers: HEADERS });
-  const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=1&channel=web`, { headers: HEADERS });
+  const pages = await request.get(`${API_BASE}/pages?key=/offers&country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
+  const offerGroups = await request.get(`${API_BASE}/offer-groups?country_id=${COUNTRY_ID}&channel=web`, { headers: HEADERS });
 
   backendData = {
     pages: await pages.json(),
@@ -96,8 +97,10 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
   });
 
   test('TC_05 – Verify “Collectible” Tab Displays Only Collectible Offers as per Backend Data', async ({ page }) => {
-    await navigateToOffers(page);
     const { normal, bin,collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);
@@ -119,22 +122,30 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
     while (verifiedOffers.size < all.length && slideCount < maxSlides) {
       slideCount++;
 
+      const activeSlide = page.locator('.slick-slide.slick-active').first();
+
       for (const offer of all) {
         if (verifiedOffers.has(offer.title)) continue;
 
-        const visibleTitle = await firstVisibleOfferTitle(page, offer.title);
-        if (visibleTitle) {
+        const titleVisible = await activeSlide
+          .getByText(offer.title, { exact: false })
+          .first()
+          .isVisible()
+          .catch(() => false);
+
+        if (titleVisible) {
           verifiedOffers.add(offer.title);
+          break;
         }
       }
 
       if (verifiedOffers.size < all.length) {
-        const rightButton = await getOffersCarouselNextButton(page);
-        expect(rightButton, 'Offers carousel next button should be visible').not.toBeNull();
-        await rightButton.click({ force: true });
-        await page.waitForTimeout(350);
+        await rightButton.click();
+        await page.waitForTimeout(1000); // Wait for transition animation to complete
       }
     }
+
+    expect(verifiedOffers.size).toBe(all.length);
     
     // List any missing offers
     if (verifiedOffers.size < all.length) {
@@ -179,8 +190,10 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
   });
 
   test('TC_10 – Verify Offer Hover Details Are Displayed Correctly in “Collectibles” Tab', async ({ page }) => {
-    await navigateToOffers(page);
     const { collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);
@@ -224,8 +237,10 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
   });
 
   test('TC_14 – Verify “Learn More” Navigation from Offers in “Collectibles” Tab', async ({ page }) => {
-    await navigateToOffers(page);
     const { collectible } = parsedOffers;
+    skipWhenNoCollectibleOffers();
+
+    await navigateToOffers(page);
     
     const collectibleTab = page.getByRole('button', { name: 'Collectables' });
     await switchTab(page, collectibleTab);

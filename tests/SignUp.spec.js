@@ -1,9 +1,9 @@
 import { test, expect } from './fixtures/home-popup.fixture.js';
-const {
+import {
   navigateToSignup,
   generateSignupUser,
-  fillSignupForm
-} = require('./helpers/signup.helper');
+  fillSignupForm,
+} from './helpers/signup.helper.js';
 
 
 const Email = process.env.LOGIN_EMAIL;

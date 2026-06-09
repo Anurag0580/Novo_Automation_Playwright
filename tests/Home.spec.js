@@ -24,13 +24,18 @@ import {
   getDropdownLocators,
 } from "./helpers/home_helpers.js";
 import { loginAndCaptureTokenBooking } from "./helpers/booking-helpers.js";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  COUNTRY_NAME,
+  FEATURES,
+} from "./helpers/envConfig.js";
 
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
-  throw new Error("❌ Required URLs missing in .env");
+if (!REAL_DOMAIN_URL) {
+  throw new Error("❌ REAL_DOMAIN_URL missing in .env");
 }
 
 test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Language Validation", () => {
@@ -42,10 +47,10 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await page.goto(`${REAL_DOMAIN_URL}/`);
     await page
       .locator("div")
-      .filter({ hasText: /^QATAR$/ })
+      .filter({ hasText: new RegExp(`^${COUNTRY_NAME}$`, "i") })
       .getByRole("button")
       .click();
-    console.log("🌍 Country selected: QATAR");
+    console.log(`🌍 Country selected: ${COUNTRY_NAME}`);
 
     await expect(
       page.getByRole("navigation").getByRole("img", { name: "Logo" }),
@@ -69,18 +74,24 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     }
 
     // Food & Beverages > Home Delivery
-    await page.goto(`${BASE_URL}/home`);
-    await headerButton(page, "Food & Beverages").click();
-    const homedelivery = headerLink(page, "Home Delivery");
-    await expect(homedelivery).toBeVisible();
-    await homedelivery.click();
-    await expect(page).toHaveURL(/homedelivery/);
-    await expect(
-      page
-        .locator("div")
-        .filter({ hasText: "Enjoy Novo CinemasTreats" })
-        .nth(4),
-    ).toBeVisible();
+    if (FEATURES.directFnb) {
+      await page.goto(`${BASE_URL}/home`);
+      await headerButton(page, "Food & Beverages").click();
+      const homedelivery = headerLink(page, "Home Delivery");
+      await expect(homedelivery).toBeVisible();
+      await homedelivery.click();
+      await expect(page).toHaveURL(/homedelivery/);
+      await expect(
+        page
+          .locator("div")
+          .filter({ hasText: "Enjoy Novo CinemasTreats" })
+          .nth(4),
+      ).toBeVisible();
+    } else {
+      console.log(
+        `⏭️ Skipping Food & Beverages > Home Delivery for country_id=${COUNTRY_ID}`,
+      );
+    }
 
     // Offers & Promotions
     await page.goto(`${BASE_URL}/home`);
@@ -114,14 +125,18 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.locator('.slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .montserrat_aae9f109-module__l2uvuG__className')).toContainText("Novo Experiences");
 
     // Private Booking
-    await page.goto(`${BASE_URL}/home`);
-    const privateBooking = headerLink(page, "Private Booking");
-    await expect(privateBooking).toBeVisible();
-    await privateBooking.click();
-    await expect(page).toHaveURL(/privatebooking/);
-    await expect(
-      page.getByRole("heading", { name: "Private Booking" }),
-    ).toBeVisible();
+    if (COUNTRY_ID !== 2) {
+      await page.goto(`${BASE_URL}/home`);
+      const privateBooking = headerLink(page, "Private Booking");
+      await expect(privateBooking).toBeVisible();
+      await privateBooking.click();
+      await expect(page).toHaveURL(/privatebooking/);
+      await expect(
+        page.getByRole("heading", { name: "Private Booking" }),
+      ).toBeVisible();
+    } else {
+      console.log(`⏭️ Skipping Private Booking for country_id=${COUNTRY_ID}`);
+    }
 
     // Premiere Club
     await page.goto(`${BASE_URL}/home`);
@@ -158,10 +173,11 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.getByRole("navigation")).toContainText(
       "العروض الترويجية",
     );
-    await expect(page.getByRole("navigation")).toContainText("الحجوزات الخاصة");
+    await expect(page.getByRole("navigation")).toContainText("التجارب");
+    await expect(page.getByRole("navigation")).toContainText("المواقع");
+    await expect(page.getByRole("navigation")).toContainText("نادي بريميير");
 
     await headerButton(page, "ENG").click({ force: true });
-    console.log("✅ TC001 COMPLETED");
   });
 
   test("TC002 - Verify English Search Functionality and API Integration", async ({
@@ -185,7 +201,9 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await navButton.click();
     await expect(searchBox).toBeVisible();
     await page.waitForTimeout(1500);
-    expect(apiCalls[0]).toMatch(/search=.*&country_id=1&channel=web/);
+    expect(apiCalls[0]).toMatch(
+      new RegExp(`search=.*&country_id=${COUNTRY_ID}&channel=web`),
+    );
 
     const searchTerm = getMovieName();
     await searchBox.fill(searchTerm);
@@ -202,10 +220,11 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await searchBox.clear();
     await expect(searchBox).toHaveValue("");
     expect(
-      apiCalls.some((url) => url.includes("search=&country_id=1&channel=web")),
+      apiCalls.some((url) =>
+        url.includes(`search=&country_id=${COUNTRY_ID}&channel=web`),
+      ),
     ).toBeTruthy();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
-    console.log("✅ TC002 COMPLETED");
   });
 
   test("TC003 - Verify Arabic Search Functionality and Language Support", async ({
@@ -244,7 +263,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     await searchBox.clear();
     await page.locator(".lucide.lucide-x.cursor-pointer").click();
-    console.log("✅ TC003 COMPLETED");
   });
 
   test("TC004 - Verify Homepage Banner Functionality and Navigation", async ({
@@ -383,7 +401,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       console.log("⏭ Banner auto-scroll verified");
     });
 
-    console.log("✅ TC004 COMPLETED SUCCESSFULLY");
   });
 
   test("TC005 - Verify Movies Section Functionality in English", async ({
@@ -413,7 +430,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     // 1. Fetch Trending Movies API
     const apiResponse = await request.get(
-      `${BACKEND_URL}/api/home/movies/trending?country_id=1&channel=web`,
+      `${BACKEND_URL}/api/home/movies/trending?country_id=${COUNTRY_ID}&channel=web`,
     );
 
     expect(apiResponse.ok()).toBeTruthy();
@@ -501,42 +518,36 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       if (iconCount > 0) {
         await trailerIcon.click();
 
-        const ytIframe = page.frameLocator(
-          'iframe[title="YouTube video player"]',
-        );
+        const ytIframe = page
+          .locator('iframe[src*="youtube"]:visible')
+          .last();
+        await expect(ytIframe).toBeVisible({ timeout: 20000 });
 
-        await ytIframe
-          .first()
-          .locator('button[aria-label="Play"], .ytp-large-play-button')
-          .waitFor({ state: "visible", timeout: 15000 });
+        const ytPlayer = ytIframe.contentFrame();
+        const player = ytPlayer.locator(".html5-video-player");
+        await expect(player).toBeVisible({ timeout: 20000 });
 
-        await ytIframe.getByRole("button", { name: /play/i }).click();
+        const playButton = ytPlayer
+          .locator(
+            ".ytp-cued-thumbnail-overlay .ytp-large-play-button, .ytp-large-play-button",
+          )
+          .first();
 
-        await expect(
-          ytIframe.locator(".ytp-progress-bar-padding"),
-        ).toBeVisible();
-
-        // Close trailer modal
-        let closed = false;
-        for (const selector of [
-          '[role="dialog"] svg',
-          '[aria-label="Close"]',
-          "button:has(svg)",
-        ]) {
-          try {
-            const el = page.locator(selector);
-            if (await el.isVisible({ timeout: 2000 })) {
-              await el.click();
-              closed = true;
-              break;
-            }
-          } catch {
-            // Continue to next selector
-          }
+        // Some trailers autoplay, so the initial play button may already be hidden.
+        if (await playButton.isVisible().catch(() => false)) {
+          await playButton.click();
         }
-        if (!closed) {
-          await page.keyboard.press("Escape");
-        }
+
+        await expect(ytPlayer.locator("video.html5-main-video")).toBeAttached();
+
+        // The trailer modal exposes its close icon inside an empty heading.
+        const closeTrailer = page
+          .getByRole("heading")
+          .filter({ hasText: /^$/ })
+          .locator("svg");
+        await expect(closeTrailer).toBeVisible();
+        await closeTrailer.click();
+        await expect(ytIframe).toBeHidden({ timeout: 10000 });
       } else {
         console.warn(
           `⚠ Trailer icon missing for movie with trailer: ${movieTitle}`,
@@ -560,6 +571,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       .first();
 
     await expect(bookNowBtn).toBeVisible({ timeout: 20000 });
+    await bookNowBtn.hover();
     await bookNowBtn.click();
 
     // 9. Navigate back
@@ -570,7 +582,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    const apiUrl = `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=1&channel=web`;
+    const apiUrl = `${BACKEND_URL}/api/booking/concessions/cinema/3/trending?country_id=${COUNTRY_ID}&channel=web`;
     let apiItems = [];
 
     await test.step("Get trending items from API", async () => {
@@ -578,9 +590,16 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       expect(response.ok()).toBeTruthy();
 
       const data = await response.json();
-      apiItems = data.data || [];
+      apiItems = Array.isArray(data.data) ? data.data : [];
     });
     console.log(`📦 Trending items received from API: ${apiItems.length}`);
+
+    if (apiItems.length === 0) {
+      const skipMessage =
+        `Skipping TC008: Trending at Novo section is not shown because trending API returned no data for country_id=${COUNTRY_ID}`;
+      console.log(skipMessage);
+      test.skip(true, skipMessage);
+    }
 
     await test.step("Load homepage", async () => {
       await page.goto(`${BASE_URL}/home`);
@@ -607,8 +626,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
     request,
   }) => {
-    console.log("\n🚀 TEST STARTED: Offers & Promotions Validation");
-    console.log("=".repeat(50));
 
     // Fetch offers from API
     console.log("📡 Fetching offers from API...");
@@ -651,10 +668,6 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await waitForOffersCarouselReady(page);
 
     await testOffersInLanguage(page, orderedOffers, true);
-
-    console.log("\n" + "=".repeat(50));
-    console.log("🎉 TEST COMPLETED SUCCESSFULLY");
-    console.log("=".repeat(50) + "\n");
   });
 
   test("TC010 - Verify Experience Cards Display and Navigation", async ({
@@ -674,7 +687,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
 
     let apiData, experiences;
     try {
-      const apiUrl = `${BACKEND_URL}/api/home/pages?key=experience&country_id=1&channel=web`;
+      const apiUrl = `${BACKEND_URL}/api/home/pages?key=experience&country_id=${COUNTRY_ID}&channel=web`;
       const response = await request.get(apiUrl);
       expect(response.ok()).toBeTruthy();
 
@@ -895,7 +908,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     expect(experiences.length).toBeGreaterThan(0);
     expect(processedCount).toBeGreaterThan(0);
     console.log(
-      `✅ TC010 COMPLETED | Processed: ${processedCount}, Skipped: ${skippedCount}`,
+      `Processed: ${processedCount}, Skipped: ${skippedCount}`,
     );
   });
 
@@ -919,7 +932,15 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
         })
         .first(),
     ).toBeVisible();
-    await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
+
+    // Footer: country-specific heading/text differences
+    if (COUNTRY_ID === 2) {
+      // UAE: heading present
+      await expect(page.getByRole("heading", { name: "Ways To Book" })).toBeVisible();
+    } else {
+      // Default: combined text present
+      await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
+    }
 
     // Test mobile app download links
     const appLinks = [
@@ -943,28 +964,37 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     }
     console.log("🔗 Social media links validated");
 
-    await expect(
-      page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
-    ).toBeVisible();
-    await expect(
-      page
+    // Qatar-specific footer links (not available in UAE)
+    if (COUNTRY_ID !== 2) {
+      await expect(
+        page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
+      ).toBeVisible();
+      await expect(
+        page
+          .getByRole("contentinfo")
+          .getByRole("link", { name: "Need Assistance ?" }),
+      ).toBeVisible();
+
+      const assistancePagePromise = page.waitForEvent("popup");
+      await page
         .getByRole("contentinfo")
-        .getByRole("link", { name: "Need Assistance ?" }),
-    ).toBeVisible();
+        .getByRole("link", { name: "Need Assistance ?" })
+        .click();
+      const assistancePage = await assistancePagePromise;
+      await expect(assistancePage.url()).toContain(
+        "https://novocinemas.freshdesk.com/support/home",
+      );
+      await assistancePage.close();
 
-    const assistancePagePromise = page.waitForEvent("popup");
-    await page
-      .getByRole("contentinfo")
-      .getByRole("link", { name: "Need Assistance ?" })
-      .click();
-    const assistancePage = await assistancePagePromise;
-    await expect(assistancePage.url()).toContain(
-      "https://novocinemas.freshdesk.com/support/home",
-    );
-    await assistancePage.close();
+      // Qatar-specific contact info
+      await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
+      await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
+    } else {
+      // UAE-specific contact info
+      await expect(page.getByText("Email Uscustomerservice@")).toBeVisible();
+      await expect(page.getByText("Find Us HereCayan Business")).toBeVisible();
+    }
 
-    await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
-    await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
     await expect(
       page
         .locator("div")
@@ -973,24 +1003,47 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ).toBeVisible();
 
     // Test social media links
-    const socialLinks = [
-      {
-        selector: ".flex.items-center.justify-center.w-8.h-8",
-        expectedUrl: "https://www.facebook.com/novocinemasQTR",
-      },
-      {
-        selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
-        expectedUrl: "https://www.youtube.com/@Novocinemas",
-      },
-      {
-        selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
-        expectedUrl: "https://www.instagram.com/novocinemas_qtr",
-      },
-      {
-        selector: ".flex.gap-x-2 > a:nth-child(4)",
-        expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
-      },
-    ];
+    let socialLinks = [];
+
+    if (COUNTRY_ID !== 2) {
+      socialLinks = [
+        {
+          selector: ".flex.items-center.justify-center.w-8.h-8",
+          expectedUrl: "https://www.facebook.com/novocinemasQTR",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
+          expectedUrl: "https://www.youtube.com/@Novocinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
+          expectedUrl: "https://www.instagram.com/novocinemas_qtr",
+        },
+        {
+          selector: ".flex.gap-x-2 > a:nth-child(4)",
+          expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
+        },
+      ];
+    } else {
+      socialLinks = [
+        {
+          selector: ".flex.items-center.justify-center.w-8.h-8",
+          expectedUrl: "https://www.facebook.com/novocinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
+          expectedUrl: "https://www.youtube.com/user/NovoCinemas",
+        },
+        {
+          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
+          expectedUrl: "https://www.instagram.com/NovoCinemas",
+        },
+        {
+          selector: ".flex.gap-x-2 > a:nth-child(4)",
+          expectedUrl: "https://x.com/NovoCinemas",
+        },
+      ];
+    }
 
     for (let i = 0; i < socialLinks.length; i++) {
       const socialPagePromise = page.waitForEvent("popup");
@@ -999,6 +1052,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       await expect(socialPage.url()).toContain(
         socialLinks[i].expectedUrl.split("?")[0],
       );
+      console.log(`🔗 Social media link ${i + 1} validated: ${socialLinks[i].expectedUrl}`);
       await socialPage.close();
     }
 
@@ -1056,7 +1110,7 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     ]);
     await expect(page.url()).toContain(`${BASE_URL}/career`);
     // await expect(page.getByRole("heading", { name: "Careers" })).toBeVisible();
-    await expect(page.getByText("Careers")).toBeVisible();
+    await expect(page.getByText("Careers").nth(1)).toBeVisible();
     await page.getByRole("button", { name: "Go Back" }).click();
     await expect(page.url()).toContain(`${BASE_URL}/home`);
 
@@ -1104,7 +1158,6 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     page,
     request,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_01 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1114,7 +1167,7 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     // Fetch base data
     console.log("📋 Fetching base data for Quick Book...");
     const baseData = await fetchQuickBookData(request, {
-      country_id: 1,
+      country_id: COUNTRY_ID,
       channel: "web",
     });
 
@@ -1167,7 +1220,7 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
       // Fetch sessions for selected date
       console.log(`🔡 Fetching sessions for date: ${date}`);
       const sessionData = await fetchQuickBookData(request, {
-        country_id: 1,
+        country_id: COUNTRY_ID,
         channel: "web",
         movie_id: selectedMovie.movie_id,
         cinema_id: selectedCinema.id,
@@ -1216,13 +1269,11 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     await page.waitForLoadState("networkidle");
     await expect(page.url()).toContain("/seat-selection/");
     console.log("✅ Successfully navigated to seat selection page");
-    console.log("========== TEST: TC_QB_01 PASSED ==========\n");
   });
 
   test("TC_QB_NEG_01 - Verify Book button remains disabled until all mandatory Quick Book selections are completed", async ({
     page,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_NEG_01 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1269,13 +1320,11 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     );
     await expect(bookBtn).not.toHaveClass(/cursor-not-allowed/);
     console.log("✅ Book button is now enabled (as expected)");
-    console.log("========== TEST: TC_QB_NEG_01 PASSED ==========\n");
   });
 
   test("TC_QB_NEG_02 - Verify Showtime dropdown is disabled until Movie, Cinema, Experience, and Date are selected", async ({
     page,
   }) => {
-    console.log("\n\n========== TEST: TC_QB_NEG_02 START ==========");
     await openQuickBook(page);
 
     const dropdowns = getDropdownLocators(page);
@@ -1319,6 +1368,5 @@ test.describe("Quick Book - Booking Flow Validation (Positive & Negative Scenari
     await dropdowns.showtime.click({ force: true });
     await expect(page.getByRole("option").first()).toBeVisible();
     console.log("✅ Showtime dropdown is now enabled with options available");
-    console.log("========== TEST: TC_QB_NEG_02 PASSED ==========\n");
   });
 });

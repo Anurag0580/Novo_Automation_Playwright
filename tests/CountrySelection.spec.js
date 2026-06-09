@@ -1,11 +1,13 @@
 import { test, expect } from "./fixtures/home-popup.fixture.js";
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
+import {
+  BASE_URL,
+  COUNTRY_NAME,
+} from "./helpers/envConfig.js";
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
-if (!BASE_URL || !BACKEND_URL || !REAL_DOMAIN_URL) {
+if (!REAL_DOMAIN_URL) {
   throw new Error(
-    "❌ PROD_FRONTEND_URL or PROD_BACKEND_URL or REAL_DOMAIN_URL missing in env"
+    "❌ REAL_DOMAIN_URL missing in env"
   );
 }
 
@@ -33,14 +35,17 @@ test.describe("Landing Page – Country Selection and Language Toggle Validation
 
     await page.getByRole("button", { name: "ENG" }).click();
 
-    // Select QATAR
-    await qatarDiv.getByRole("button").click();
+    const expectedBaseUrl = new URL(BASE_URL);
+    const selectedCountryDiv = COUNTRY_NAME === "UAE" ? uaeDiv : qatarDiv;
 
-    // Now go to main site
-    await page.goto(BASE_URL, { waitUntil: "domcontentloaded" });
+    await Promise.all([
+      page.waitForURL(
+        (url) => url.origin === expectedBaseUrl.origin,
+        { timeout: 10000 }
+      ),
+      selectedCountryDiv.getByRole("button").click(),
+    ]);
 
-    // If you want to test UAE again → reload country selector properly
-    await page.goto(`${REAL_DOMAIN_URL}/`, { waitUntil: "domcontentloaded" });
-    await uaeDiv.getByRole("button").click();
+    expect(new URL(page.url()).origin).toBe(expectedBaseUrl.origin);
   });
 });

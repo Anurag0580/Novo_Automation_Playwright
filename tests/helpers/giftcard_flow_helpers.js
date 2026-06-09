@@ -1,13 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { BASE_URL, BACKEND_URL, COUNTRY_ID, COUNTRY_NAME, CURRENCY } from "./envConfig.js";
 
 // ==================== CONSTANTS ====================
-const BASE_URL = process.env.PROD_FRONTEND_URL;
-const BACKEND_URL = process.env.PROD_BACKEND_URL;
-
-const TEST_CARD_NUMBER = '2000001537711200';
-if (!BASE_URL || !BACKEND_URL) {
-  throw new Error('❌ Frontend or Backend URL is missing in .env file');
-}
+// const TEST_CARD_NUMBER = '2000001537711200'; // For Qatar
+const TEST_CARD_NUMBER = '9950082515665964'; // For UAE
+const GIFT_CARDS_API_PATH = '/api/gifts-wallets/gift-cards/all';
 
 // ==================== HELPER FUNCTIONS ====================
 
@@ -24,6 +21,7 @@ async function loginAndCaptureToken(page) {
 
   let authToken = null;
   let userDetails = null;
+  const startingUrl = page.url();
 
   const tokenListener = (req) => {
     const headers = req.headers();
@@ -62,13 +60,12 @@ async function loginAndCaptureToken(page) {
       localStorage.setItem('access_token', token.replace('Bearer ', ''));
       localStorage.setItem('authorization_token', token);
     }, [authToken]);
-
-    await page.reload({ waitUntil: 'networkidle' });
   }
 
-  await page
-    .waitForURL(url => url.href !== startingUrl, { timeout: 15000 })
-    .catch(() => null);
+  await Promise.race([
+    page.waitForURL(url => url.href !== startingUrl, { timeout: 15000 }).catch(() => null),
+    page.waitForLoadState('networkidle').catch(() => null),
+  ]);
 
   page.off('request', tokenListener);
   return { authToken, userDetails };
@@ -78,14 +75,37 @@ async function loginAndCaptureToken(page) {
 /**
  * Complete payment by filling card details
  */
+async function verifyCyberSourceSdkLoaded(page) {
+  const cybersourceFrame = page.frameLocator('iframe[id="__buttonlist"]');
+  const checkoutButton = cybersourceFrame.getByRole('button', {
+    name: /Checkout with card/i,
+  });
+
+  await expect(checkoutButton).toBeVisible({ timeout: 15000 });
+
+  const incompatibleMessage = cybersourceFrame.getByText(
+    /Browser not compatible\.?/i
+  );
+  await expect(incompatibleMessage).toHaveCount(0, { timeout: 3000 });
+
+  console.log(
+    `✅ CyberSource SDK loaded successfully for ${COUNTRY_NAME}: checkout launcher is visible`
+  );
+}
+
 async function completePayment(page) {
+  if (COUNTRY_ID === 2) {
+    await verifyCyberSourceSdkLoaded(page);
+    return;
+  }
+
   const creditCardOption = page.locator('div', { hasText: /^Credit Card$/ }).first();
-  await expect(creditCardOption).toBeVisible();
+  await expect(creditCardOption).toBeVisible({ timeout: 10000 });
   await page.getByRole('button', { name: 'Use a Different Card' }).click();
   
-  await page.frameLocator('#cardNumber-iframe').locator('input').fill('4111111111111111');
-  await page.frameLocator('#expiryDate-iframe').locator('input').fill('12/28');
-  await page.frameLocator('#verificationCode-iframe').locator('input').fill('123');
+  await page.frameLocator('iframe[name="cardNumber-input"]').locator('input').fill('4111111111111111');
+  await page.frameLocator('iframe[name="expiryDate-input"]').locator('input').fill('12/28');
+  await page.frameLocator('iframe[name="verificationCode-input"]').locator('input').fill('123');
   
   await page.getByRole('checkbox', { name: 'I agree to the Terms and' }).check();
 }
@@ -179,7 +199,75 @@ async function verifyOrderSummary(page, testData) {
 /**
  * Select gift card by price
  */
-async function selectGiftCard(page, price, currency = 'QAR') {
+async function fetchAvailableGiftCards(page) {
+  const response = await page.request.get(
+    `${BACKEND_URL}${GIFT_CARDS_API_PATH}?country_id=${COUNTRY_ID}&channel=web`,
+    {
+      headers: {
+        accept: 'application/json, text/plain, */*',
+        referer: `${BASE_URL}/`,
+      },
+    }
+  );
+
+  expect(response.ok()).toBeTruthy();
+  const body = await response.json();
+  expect(body.success).toBeTruthy();
+  expect(Array.isArray(body.data)).toBeTruthy();
+  expect(body.data.length).toBeGreaterThan(0);
+
+  return body.data;
+}
+
+function centsToDisplayAmount(priceInCents) {
+  return String(Math.floor(priceInCents / 100));
+}
+
+function pickRandomItem(items) {
+  const randomIndex = Math.floor(Math.random() * items.length);
+  return items[randomIndex];
+}
+
+async function selectGiftCard(page, price, currency = CURRENCY, quantity = 1) {
+  if (COUNTRY_ID === 2) {
+    await expect(
+      page.getByRole('heading', { name: /Customize your gift card/i })
+    ).toBeVisible({ timeout: 15000 });
+
+    const apiCards = await fetchAvailableGiftCards(page);
+    const matchingCard = price
+      ? apiCards.find(card => centsToDisplayAmount(card.PriceInCents) === String(price))
+      : null;
+    const selectedApiCard = matchingCard || pickRandomItem(apiCards);
+    const selectedPrice = centsToDisplayAmount(selectedApiCard.PriceInCents);
+    const cardHeading = `${selectedPrice} ${CURRENCY}`;
+
+    const card = page
+      .locator('.border.border-gray-500')
+      .filter({
+        has: page.getByRole('heading', { name: cardHeading }),
+      })
+      .first();
+
+    await expect(card).toBeVisible();
+    await expect(card.getByRole('img', { name: 'gift card image' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: cardHeading })).toBeVisible();
+    await expect(card.getByText('Quantity').first()).toBeVisible();
+
+    const quantityInput = card.getByRole('spinbutton').first();
+    await expect(quantityInput).toBeVisible();
+    await quantityInput.fill(String(quantity));
+
+    console.log(`âœ… ${COUNTRY_NAME} gift card selected dynamically: ${cardHeading}`);
+
+    return {
+      price: selectedPrice,
+      currency: CURRENCY,
+      quantity,
+      actionLocator: card.getByRole('button', { name: 'Pay now' }).first(),
+    };
+  }
+
   await expect(page.getByText('Customize your Gift Card')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Price:')).toBeVisible();
 
@@ -207,13 +295,24 @@ async function selectGiftCard(page, price, currency = 'QAR') {
 /**
  * Capture gift card API response
  */
-async function captureGiftCardAPI(page, apiPath = '/api/gifts-wallets/gift-card/buy') {
+async function captureGiftCardAPI(page, apiPath = '/api/gifts-wallets/gift-card/buy', selectedCard = null) {
+  const actionLocator =
+    selectedCard?.actionLocator ||
+    page.getByRole('button', { name: COUNTRY_ID === 2 ? 'Pay now' : 'Next' }).first();
+
   const [response] = await Promise.all([
-    page.waitForResponse(res => res.url().includes(`${BACKEND_URL}${apiPath}`) && res.status() === 200),
-    page.getByRole('button', { name: 'Next' }).click()
+    page.waitForResponse(res => res.url().includes(`${BACKEND_URL}${apiPath}`)),
+    actionLocator.click()
   ]);
 
   const body = await response.json();
+
+  if (response.status() !== 200 || !body.success) {
+    const errorMsg = body.message || 'Unknown backend error';
+    console.log(`❌ Gift card API error: ${errorMsg}`);
+    throw new Error(`Gift card API failed with status ${response.status()}: ${errorMsg}`);
+  }
+
   expect(body.success).toBeTruthy();
   expect(body.data).toHaveProperty('reservationId');
   console.log(`✅ Gift card API success: ${body.data.reservationId}`);
@@ -246,8 +345,10 @@ function formatPurchaseDate(isoDate) {
 export {
   BASE_URL,
   BACKEND_URL,
+  CURRENCY,
   TEST_CARD_NUMBER,
   loginAndCaptureToken,
+  verifyCyberSourceSdkLoaded,
   completePayment,
   getUserDetailsFromAPI,
   navigateToGiftCardFlow,
@@ -255,4 +356,5 @@ export {
   selectGiftCard,
   captureGiftCardAPI,
   formatPurchaseDate,
+  fetchAvailableGiftCards,
 };

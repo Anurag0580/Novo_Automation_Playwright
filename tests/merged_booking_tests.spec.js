@@ -80,7 +80,7 @@ import {
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 const skipToPaymentButtonName = new RegExp(
-  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY}(?:\\s+\\d+(?:\\.\\d{1,2})?)?)?$`,
+  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY})?$`,
   "i"
 );
 
@@ -117,7 +117,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -189,7 +189,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       // await expect(
       //   page.getByRole("heading", { name: "Snack Time!" })
       // ).toBeVisible();
-      await expect(page.getByText("Snack Time!")).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       // ================== F&B SELECTION ==================
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
@@ -207,7 +207,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       console.log(
         `✓ F&B Selection Complete - ${
           fbTracker.items.length
-        } items, Total: QAR ${fbTracker.totalPrice.toFixed(2)}`
+        } items, Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`
       );
 
       await page.getByRole("button", { name: "Continue" }).click();
@@ -278,7 +278,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       for (const fbItem of fbTracker.items) {
         const name = fbItem.concessionItemName || fbItem.name;
         await expect(
-          page.getByText(new RegExp(name, "i")).first()
+          page.getByText(new RegExp(escapeRegExp(name), "i")).first()
         ).toBeVisible();
       }
     }
@@ -289,7 +289,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     ).toBeVisible();
 
     const totalRegex = new RegExp(
-      `QAR\\s*${grandTotal.toString().replace(".", "\\.?")}`,
+      `${ESCAPED_CURRENCY}\\s*${grandTotal.toString().replace(".", "\\.?")}`,
       "i"
     );
     await expect(paymentSidePanel.getByText(totalRegex)).toBeVisible();
@@ -297,7 +297,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================== COMPLETE PAYMENT ==================
     await completePayment(page);
 
-    console.log("\n=== TC_01 COMPLETED SUCCESSFULLY ===");
     console.log({
       movie: sidePanelData.movie.movie_name,
       seats: selectedSeats.join(", "),
@@ -337,7 +336,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -458,11 +457,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       ).toBeVisible();
 
       console.log(
-        `✓ Verified total price: QAR ${totalWithBookingFee.toFixed(2)}`
+        `✓ Verified total price: ${CURRENCY} ${totalWithBookingFee.toFixed(2)}`
       );
     } catch {
       console.warn(
-        `Could not verify total price. Expected: QAR ${totalWithBookingFee.toFixed(
+        `Could not verify total price. Expected: ${CURRENCY} ${totalWithBookingFee.toFixed(
           2
         )}`
       );
@@ -491,7 +490,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     request,
   }) => {
 
-    await page.goto("https://qa.novocinemas.com/home", {
+    await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
     });
     await page.waitForURL(/novocinemas\.com\/home/);
@@ -602,7 +601,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     console.log("Proceeding to seat selection to trigger seat layout API...");
 
     const seatLayoutResponse = await request.get(
-      `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const seatLayoutData = await seatLayoutResponse.json();
     const layout = seatLayoutData.data;
@@ -632,7 +631,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       page.getByRole("img", { name: "Screen Indicator" })
     ).toBeVisible();
     await expect(
-      page.getByText(new RegExp(`${layout.areas[0].name} \\(QAR`))
+      page.getByText(
+        new RegExp(`${escapeRegExp(layout.areas[0].name)} \\(${ESCAPED_CURRENCY}`)
+      )
     ).toBeVisible();
     await expect(
       page.getByText(`Screen ${layout.screenName}`, { exact: true })
@@ -751,7 +752,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     // Dynamic price verification for each area
     for (const [areaName, areaInfo] of areaGroupedSeats) {
-      const expectedPriceText = `QAR ${areaInfo.unitPrice.toFixed(2)} x ${
+      const expectedPriceText = `${CURRENCY} ${areaInfo.unitPrice.toFixed(2)} x ${
         areaInfo.count
       }`;
 
@@ -761,7 +762,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       } catch (error) {
         console.warn(`Could not find exact price text: ${expectedPriceText}`);
         const alternativePriceRegex = new RegExp(
-          `QAR\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
+          `${ESCAPED_CURRENCY}\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
             areaInfo.count
           }`
         );
@@ -773,8 +774,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // Verify total price
     const totalPriceFormatted =
       totalExpectedPrice % 1 === 0
-        ? `QAR ${Math.floor(totalExpectedPrice)}`
-        : `QAR ${totalExpectedPrice.toFixed(2)}`;
+        ? `${CURRENCY} ${Math.floor(totalExpectedPrice)}`
+        : `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`;
 
     try {
       await expect(page.locator("body")).toContainText(totalPriceFormatted);
@@ -782,11 +783,13 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     } catch (error) {
       try {
         await expect(page.locator("body")).toContainText(
-          `QAR ${totalExpectedPrice.toFixed(2)}`
+          `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`
         );
         console.log(`✓ Verified total price (decimal format)`);
       } catch (secondError) {
-        const priceRegex = new RegExp(`QAR\\s*${totalExpectedPrice}(?:\\.00)?`);
+        const priceRegex = new RegExp(
+          `${ESCAPED_CURRENCY}\\s*${totalExpectedPrice}(?:\\.00)?`
+        );
         await expect(page.locator("body")).toContainText(priceRegex);
         console.log(`✓ Verified total price (regex)`);
       }
@@ -808,7 +811,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     await expect(
       page.getByRole("img", { name: "offerbg" }).nth(1)
     ).toBeVisible();
-    // await expect(page.getByText("Loyalty Offers").nth(1)).toBeVisible();
     await expect(page.getByText("Loyalty Offers").first()).toBeVisible();
     await expect(
       page.getByRole("button", { name: "View" }).nth(1)
@@ -891,20 +893,30 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         });
 
         try {
-          await expect(page.getByText(offer.description)).toBeVisible();
+          const offerContainer = page
+            .getByText(offer.description, { exact: true })
+            .first()
+            .locator(
+              "xpath=ancestor::div[.//button[normalize-space()='+'] and .//*[contains(normalize-space(), 'Per ticket:')] and .//*[contains(normalize-space(), 'Available:')]][1]"
+            );
+
+          await expect(offerContainer).toBeVisible({ timeout: 10000 });
+          await expect(
+            offerContainer.getByText(offer.description, { exact: true })
+          ).toBeVisible();
           console.log(`✓ Description verified: "${offer.description}"`);
 
-          const priceText = `Per ticket: QAR ${offer.pricePerTicket.toFixed(
+          const priceText = `Per ticket: ${CURRENCY} ${offer.pricePerTicket.toFixed(
             2
           )}`;
-          await expect(page.getByText(priceText)).toBeVisible();
+          await expect(offerContainer.getByText(priceText)).toBeVisible();
           console.log(`✓ Price verified: ${priceText}`);
 
           const availableText = `Available: ${offer.availableQuantity} ticket${
             offer.availableQuantity > 1 ? "s" : ""
           }`;
           try {
-            await expect(page.getByText(availableText)).toBeVisible();
+            await expect(offerContainer.getByText(availableText)).toBeVisible();
             console.log(`✓ Availability verified: ${availableText}`);
           } catch (error) {
             console.warn(
@@ -912,14 +924,14 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
             );
           }
 
-          const initialAmountLocator = page
-            .locator(`text=/Amount: QAR\\s*0\\.00/`)
-            .nth(i);
-          await expect(initialAmountLocator).toBeVisible();
-          console.log(`✓ Initial amount display verified: QAR 0.00`);
+          await expect(
+            offerContainer.getByText(
+              new RegExp(`Amount:?\\s*${ESCAPED_CURRENCY}\\s*0\\.00`)
+            )
+          ).toBeVisible();
+          console.log(`✓ Initial amount display verified: ${CURRENCY} 0.00`);
 
-          const quantityContainer = page.getByText("-0+").nth(i);
-          const minusButton = quantityContainer.getByRole("button", {
+          const minusButton = offerContainer.getByRole("button", {
             name: "-",
           });
           await expect(minusButton).toBeVisible();
@@ -927,7 +939,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
             `✓ Minus button is visible (initially disabled at quantity 0)`
           );
 
-          const plusButton = quantityContainer.getByRole("button", {
+          const plusButton = offerContainer.getByRole("button", {
             name: "+",
           });
           await expect(plusButton).toBeVisible();
@@ -935,7 +947,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           console.log(`✓ Plus button is visible and enabled`);
 
           await expect(
-            quantityContainer.getByText("0", { exact: true })
+            offerContainer.getByText("0", { exact: true })
           ).toBeVisible();
           console.log(`✓ Quantity controls verified (-, 0, +) - initial state`);
 
@@ -996,7 +1008,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           selectedOffer = firstOffer;
 
           const expectedAmount = firstOffer.pricePerTicket * selectedQuantity;
-          const amountText = `Amount: QAR ${expectedAmount.toFixed(2)}`;
+          const amountText = `Amount: ${CURRENCY} ${expectedAmount.toFixed(2)}`;
 
           try {
             const offerSection = page
@@ -1009,7 +1021,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           } catch (error) {
             console.warn(`Trying alternative amount verification...`);
             const amountRegex = new RegExp(
-              `Amount:\\s*QAR\\s*${expectedAmount.toFixed(2)}`
+              `Amount:\\s*${ESCAPED_CURRENCY}\\s*${expectedAmount.toFixed(2)}`
             );
             await expect(
               page.locator(`text=${amountRegex}`).first()
@@ -1021,9 +1033,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           console.log(`   - Description: ${firstOffer.description}`);
           console.log(`   - Quantity: ${selectedQuantity}`);
           console.log(
-            `   - Unit Price: QAR ${firstOffer.pricePerTicket.toFixed(2)}`
+            `   - Unit Price: ${CURRENCY} ${firstOffer.pricePerTicket.toFixed(2)}`
           );
-          console.log(`   - Total Amount: QAR ${expectedAmount.toFixed(2)}`);
+          console.log(`   - Total Amount: ${CURRENCY} ${expectedAmount.toFixed(2)}`);
 
           console.log("\n=== Applying Selected Offer ===");
 
@@ -1058,7 +1070,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       );
       const ticketAmountText = await ticketAmountElement.innerText();
       console.log("Ticket Amount UI:", ticketAmountText);
-      expect(ticketAmountText).toMatch(/\+?\s*QAR\s*\d+(\.\d+)?/);
+      expect(ticketAmountText).toMatch(
+        new RegExp(`\\+?\\s*${ESCAPED_CURRENCY}\\s*\\d+(\\.\\d+)?`)
+      );
 
       let loyaltyExists = true;
       try {
@@ -1070,7 +1084,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         );
         const loyaltyAmountText = await loyaltyAmountElement.innerText();
         console.log("Loyalty Discount UI:", loyaltyAmountText);
-        expect(loyaltyAmountText).toMatch(/-\s*QAR\s*\d+(\.\d+)?/);
+        expect(loyaltyAmountText).toMatch(
+          new RegExp(`-\\s*${ESCAPED_CURRENCY}\\s*\\d+(\\.\\d+)?`)
+        );
       } catch (err) {
         loyaltyExists = false;
         console.log(
@@ -1086,7 +1102,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       );
       const totalAmountText = await totalAmountElement.innerText();
       console.log("Total Amount UI:", totalAmountText);
-      expect(totalAmountText).toMatch(/QAR\s*\d+(\.\d+)?/);
+      expect(totalAmountText).toMatch(
+        new RegExp(`${ESCAPED_CURRENCY}\\s*\\d+(\\.\\d+)?`)
+      );
 
       console.log("\n✓ Dynamic price verification completed successfully\n");
 
@@ -1126,7 +1144,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           console.log(
             "✓ Loyalty discount from API (after Continue):",
             actualLoyaltyDiscountCents / 100,
-            "QAR"
+            CURRENCY
           );
         } catch {
           console.warn("Could not parse apply loyalty offer response");
@@ -1135,7 +1153,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       console.log("📌 Reservation ID:", reservationId);
       console.log("skip_concession (redirect):", skipConcession);
-      console.log("💰 Booking Fee:", bookingFeeCents / 100, "QAR");
+      console.log("💰 Booking Fee:", bookingFeeCents / 100, CURRENCY);
 
       if (skipConcession) {
         await page.waitForURL(/\/payment/);
@@ -1152,9 +1170,13 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       await expect(page).toHaveURL(/\/payment/);
       // await page.waitForLoadState("networkidle");
-      await expect(
-        page.getByRole("heading", { name: "Payment Options" })
-      ).toBeVisible();
+      if (COUNTRY_ID !== 2) {
+        await expect(
+          page.getByRole("heading", {
+            name: /Payment Options|Gift Card & Vouchers/i,
+          })
+        ).toBeVisible();
+      }
 
       const paymentSidePanel = page
         .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1184,11 +1206,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       const totalWithBookingFee = finalTicketPrice + bookingFeeValue;
 
       console.log("Price Breakdown:");
-      console.log("   - Original Ticket Price:", totalExpectedPrice, "QAR");
-      console.log("   - Loyalty Discount:", loyaltyDiscountAmount, "QAR");
-      console.log("   - Final Ticket Price:", finalTicketPrice, "QAR");
-      console.log("   - Booking Fee:", bookingFeeValue, "QAR");
-      console.log("   - Total Price:", totalWithBookingFee, "QAR");
+      console.log("   - Original Ticket Price:", totalExpectedPrice, CURRENCY);
+      console.log("   - Loyalty Discount:", loyaltyDiscountAmount, CURRENCY);
+      console.log("   - Final Ticket Price:", finalTicketPrice, CURRENCY);
+      console.log("   - Booking Fee:", bookingFeeValue, CURRENCY);
+      console.log("   - Total Price:", totalWithBookingFee, CURRENCY);
 
       // === Verify seats in payment page ===
       console.log("\n=== Verifying Seats in Payment Page ===");
@@ -1202,7 +1224,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       console.log("\n=== Verifying Ticket Prices in Payment Page ===");
 
       for (const [areaName, areaInfo] of areaGroupedSeats) {
-        const ticketPriceText = `QAR ${areaInfo.unitPrice.toFixed(2)} x ${
+        const ticketPriceText = `${CURRENCY} ${areaInfo.unitPrice.toFixed(2)} x ${
           areaInfo.count
         }`;
 
@@ -1213,7 +1235,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           );
         } catch {
           const priceRegex = new RegExp(
-            `QAR\\s*${areaInfo.unitPrice
+            `${ESCAPED_CURRENCY}\\s*${areaInfo.unitPrice
               .toFixed(2)
               .replace(".", "\\.")}\\s*x\\s*${areaInfo.count}`
           );
@@ -1235,7 +1257,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         await expect(
           page.getByText(
             new RegExp(
-              `\\+\\s*QAR\\s*${Math.round(totalExpectedPrice)}(?:\\.\\d+)?`
+              `\\+\\s*${ESCAPED_CURRENCY}\\s*${Math.round(totalExpectedPrice)}(?:\\.\\d+)?`
             )
           )
         ).toBeVisible();
@@ -1249,11 +1271,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         try {
           await expect(page.getByText("Loyalty Discount")).toBeVisible();
 
-          // amount may be "- QAR" or "- QAR 15"
+          // amount may be `- ${CURRENCY}` or `- ${CURRENCY} 15`
           await expect(
             page.getByText(
               new RegExp(
-                `-\\s*QAR\\s*${Math.round(loyaltyDiscountAmount)}(?:\\.\\d+)?`
+                `-\\s*${ESCAPED_CURRENCY}\\s*${Math.round(loyaltyDiscountAmount)}(?:\\.\\d+)?`
               )
             )
           ).toBeVisible();
@@ -1269,7 +1291,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         await expect(page.getByText("Booking Fee")).toBeVisible();
         await expect(
           page.getByText(
-            new RegExp(`\\+\\s*QAR\\s*${bookingFeeQAR}(?:\\.\\d+)?`)
+            new RegExp(`\\+\\s*${ESCAPED_CURRENCY}\\s*${bookingFeeQAR}(?:\\.\\d+)?`)
           )
         ).toBeVisible();
         console.log("✓ Verified booking fee");
@@ -1291,10 +1313,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         for (const value of possibleTotals) {
           try {
             await expect(totalRow).toContainText(
-              new RegExp(`QAR\\s*${value}(?:\\.\\d+)?`),
+              new RegExp(`${ESCAPED_CURRENCY}\\s*${value}(?:\\.\\d+)?`),
             );
 
-            console.log(`✓ Verified total price: QAR ${value}`);
+            console.log(`✓ Verified total price: ${CURRENCY} ${value}`);
             matched = true;
             break;
           } catch {
@@ -1327,7 +1349,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         if (loyaltyOfferApplied && selectedOffer) {
           try {
             await expect(
-              page.getByText(new RegExp(selectedOffer.description, "i")).first()
+              page
+                .getByText(new RegExp(escapeRegExp(selectedOffer.description), "i"))
+                .first()
             ).toBeVisible();
             console.log(
               `✓ Applied loyalty offer visible: ${selectedOffer.description}`
@@ -1357,7 +1381,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         console.log(`Offer applied: ${selectedOffer.description}`);
         console.log(`Applied quantity: ${selectedQuantity}`);
         console.log(
-          `Applied amount: QAR ${(
+          `Applied amount: ${CURRENCY} ${(
             selectedOffer.pricePerTicket * selectedQuantity
           ).toFixed(2)}`
         );
@@ -1414,12 +1438,12 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const { selectSeatsResponsePromise, offersApplyPromise } =
       setupPaymentInterceptors(page);
     const skipToPaymentBtn = page.getByRole("button", {
-      name: "Skip to Payment QAR",
+      name: skipToPaymentButtonName,
     });
 
     if (await skipToPaymentBtn.isVisible()) {
       await skipToPaymentBtn.click();
-      console.log("➡️ Clicked: Skip to Payment QAR");
+      console.log(`➡️ Clicked: Skip to Payment ${CURRENCY}`);
     } else {
       await page.getByRole("button", { name: "Continue" }).click();
       console.log("➡️ Clicked: Continue");
@@ -1483,8 +1507,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     await verifyOffersPromotionsSection(page, isOfferApplied, offerData);
     await verifyCreditCardOption(page);
-    await verifyAutoFilledCardNumber(page);
-    await fillPaymentDetails(page);
+    if (COUNTRY_ID !== 2) {
+      await verifyAutoFilledCardNumber(page);
+      await fillPaymentDetails(page);
+    }
   });
 
   // ============================================================================
@@ -1510,12 +1536,12 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const { selectSeatsResponsePromise, offersApplyPromise } =
       setupPaymentInterceptors(page);
     const skipToPaymentBtn = page.getByRole("button", {
-      name: "Skip to Payment QAR",
+      name: skipToPaymentButtonName,
     });
 
     if (await skipToPaymentBtn.isVisible()) {
       await skipToPaymentBtn.click();
-      console.log("➡️ Clicked: Skip to Payment QAR");
+      console.log(`➡️ Clicked: Skip to Payment ${CURRENCY}`);
     } else {
       await page.getByRole("button", { name: "Continue" }).click();
       console.log("➡️ Clicked: Continue");
@@ -1615,13 +1641,22 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     // Verify response structure
     expect(cancelTransactionResponse.status()).toBe(200);
+    if(COUNTRY_ID === 2) {
     expect(cancelResponseData).toMatchObject({
       statusCode: 200,
       success: true,
       type: "OK",
-      message: "Transaction successfully canceled.",
+      message: "Cancel Transaction Disabled.",
       data: null,
-    });
+    })}else{
+      expect(cancelResponseData).toMatchObject({
+        statusCode: 200,
+        success: true,
+        type: "OK",
+        message: "Transaction successfully canceled.",
+        data: null,
+      })
+    };
 
     // Verify the URL contains the correct reservation ID
     const cancelUrl = cancelTransactionResponse.url();
@@ -1772,32 +1807,36 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ===============================
     console.log("🔙 Navigating back from Payment page");
 
-    // OPTIONAL – offer remove (only when skip_fnb=false)
-    const offerRemovePromise = page
-      .waitForResponse(
-        (res) =>
-          res.url().includes("/api/booking/offers/remove") &&
-          res.status() === 200,
-      )
-      .catch(() => null);
+    // Offer removal is expected only when the flow returns through F&B.
+    const waitForCancelTransaction = () =>
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().includes("/api/booking/cancel-transaction/") &&
+          response.url().includes(reservationId),
+        { timeout: 15000 }
+      );
 
-    // MANDATORY – cancel transaction
-    const cancelTransactionPromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "DELETE" &&
-        response.url().includes("/api/booking/cancel-transaction/") &&
-        response.url().includes(reservationId),
-    );
+    const offerRemovePromise = !skipFnb
+      ? page.waitForResponse(
+          (res) =>
+            res.url().includes("/api/booking/offers/remove") &&
+            res.status() === 200,
+          { timeout: 15000 }
+        )
+      : null;
+    let cancelTransactionPromise = skipFnb
+      ? waitForCancelTransaction()
+      : null;
 
     // Back button from Payment
     await page.locator(".rounded-full.hover\\:cursor-pointer").click();
 
     // ===============================
-    // HANDLE OFFER REMOVAL (ONLY IF CALLED)
+    // HANDLE OFFER REMOVAL (ONLY WHEN F&B IS ENABLED)
     // ===============================
-    const offerRemoveResponse = await offerRemovePromise;
-
-    if (offerRemoveResponse) {
+    if (!skipFnb) {
+      const offerRemoveResponse = await offerRemovePromise;
       const offerRemovalData = await offerRemoveResponse.json();
 
       expect(offerRemovalData.success).toBe(true);
@@ -1833,6 +1872,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       // Back again from F&B → Seat Selection
       console.log("🔙 Navigating back from F&B page");
+      cancelTransactionPromise = waitForCancelTransaction();
       await page.locator(".rounded-full.hover\\:cursor-pointer").click();
     } else {
       console.log("ℹ️ Offer remove API not called (skip_fnb=true flow)");
@@ -1847,12 +1887,21 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const cancelResponseData = await cancelResponse.json();
 
     expect(cancelResponse.status()).toBe(200);
-    expect(cancelResponseData).toMatchObject({
-      statusCode: 200,
-      success: true,
-      message: "Transaction successfully canceled.",
-      data: null,
-    });
+    expect(cancelResponseData).toMatchObject(
+      COUNTRY_ID === 2
+        ? {
+            statusCode: 200,
+            success: true,
+            message: "Cancel Transaction Disabled.",
+            data: null,
+          }
+        : {
+            statusCode: 200,
+            success: true,
+            message: "Transaction successfully canceled.",
+            data: null,
+          }
+    );
 
     console.log("✅ Cancel transaction API verified");
 
@@ -1899,7 +1948,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -1963,7 +2012,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       // await expect(
       //   page.getByRole("heading", { name: "Snack Time!" })
       // ).toBeVisible();
-      await expect(page.getByText("Snack Time!")).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting Enhanced F&B Selection Flow ===");
 
@@ -2005,7 +2054,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       console.log(
         `\n✅ F&B Selection Complete - ${
           fbTracker.items.length
-        } items added, Total: QAR ${fbTracker.totalPrice.toFixed(2)}`
+        } items added, Total: ${CURRENCY} ${fbTracker.totalPrice.toFixed(2)}`
       );
 
       await page.getByRole("button", { name: "Continue" }).click();
@@ -2024,9 +2073,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ======================================================
     console.log("\n=== Verifying Payment Page ===");
 
-    await expect(
-      page.getByRole("heading", { name: "Payment Options" })
-    ).toBeVisible();
+    if (COUNTRY_ID !== 2) {
+      await expect(
+        page.getByRole("heading", { name: "Payment Options" })
+      ).toBeVisible();
+    }
 
     const paymentSidePanel = page
       .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -2093,11 +2144,18 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const fbTotal = skipFnb ? 0 : fbTracker.totalPrice;
     const grandTotal = totalTicketPrice + fbTotal + bookingFeeQAR;
 
-    const expectedTotal = `QAR ${grandTotal.toFixed(2)}`;
+    const expectedTotal = grandTotal.toFixed(2);
+    const expectedTotalWhole = Math.round(grandTotal).toString();
+    await expect(page.getByText("Total Price").first()).toBeVisible();
     await expect(
       page.getByText(
-        new RegExp(`Total Price.*${expectedTotal.replace(".", "\\.")}`)
-      )
+        new RegExp(
+          `${ESCAPED_CURRENCY}\\s*(?:${expectedTotal.replace(
+            ".",
+            "\\."
+          )}|${expectedTotalWhole})`
+        )
+      ).first()
     ).toBeVisible();
 
     await completePayment(page);
@@ -2106,7 +2164,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     console.log(`Movie: ${sidePanelData.movie.movie_name}`);
     console.log(`Seats: ${selectedSeats.join(", ")}`);
     console.log(`skip_fnb: ${skipFnb}`);
-    console.log(`Total: ${expectedTotal}`);
+    console.log(`Total: ${CURRENCY} ${expectedTotal}`);
   });
 
   // ============================================================================
@@ -2141,7 +2199,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -2197,7 +2255,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       // await expect(
       //   page.getByRole("heading", { name: "Snack Time!" })
       // ).toBeVisible();
-      await expect(page.getByText("Snack Time!")).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
@@ -2235,7 +2293,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const grandTotal = totalTicketPrice + fbTotal + bookingFeeQAR;
 
     const beforeTotalRegex = new RegExp(
-      `QAR\\s*${grandTotal.toString().replace(".", "\\.?")}`,
+      `${ESCAPED_CURRENCY}\\s*${grandTotal.toString().replace(".", "\\.?")}`,
       "i"
     );
 
@@ -2245,7 +2303,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     await expect(paymentSidePanel.getByText(beforeTotalRegex)).toBeVisible();
 
-    console.log(`✓ Verified total before gift card: QAR ${grandTotal}`);
+    console.log(`✓ Verified total before gift card: ${CURRENCY} ${grandTotal}`);
 
     // ================= VERIFY F&B ITEMS IN PAYMENT PAGE =================
     if (!skipFnb && fbTracker?.items?.length) {
@@ -2296,34 +2354,33 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       await expect(
         paymentSidePanel.getByText(
-          new RegExp(`-\\s*QAR\\s*${appliedAmount}`, "i")
+          new RegExp(`-\\s*${ESCAPED_CURRENCY}\\s*${appliedAmount}`, "i")
         )
       ).toBeVisible();
 
-      console.log(`✓ Verified Gift Card Discount: - QAR ${appliedAmount}`);
+      console.log(`✓ Verified Gift Card Discount: - ${CURRENCY} ${appliedAmount}`);
 
       const afterTotalRegex = new RegExp(
-        `QAR\\s*${remainingAmount.toString().replace(".", "\\.?")}`,
+        `${ESCAPED_CURRENCY}\\s*${remainingAmount.toString().replace(".", "\\.?")}`,
         "i"
       );
 
       await expect(paymentSidePanel.getByText(afterTotalRegex)).toBeVisible();
 
-      console.log(`✓ Verified total after gift card: QAR ${remainingAmount}`);
+      console.log(`✓ Verified total after gift card: ${CURRENCY} ${remainingAmount}`);
     } else {
       console.log("ℹ️ Gift card not applied — skipping gift card verification");
     }
 
-    console.log("\n=== Test Completed Successfully ===");
     console.log(`Movie: ${sidePanelData.movie.movie_name}`);
     console.log(`Seats: ${selectedSeats.join(", ")}`);
     console.log(`skip_fnb: ${skipFnb}`);
     if (giftCardResult?.remainingAmountQAR !== undefined) {
       console.log(
-        `Final Total (payable): QAR ${giftCardResult.remainingAmountQAR}`
+        `Final Total (payable): ${CURRENCY} ${giftCardResult.remainingAmountQAR}`
       );
     } else {
-      console.log(`Final Total (payable): QAR ${grandTotal}`);
+      console.log(`Final Total (payable): ${CURRENCY} ${grandTotal}`);
     }
   });
 
@@ -2335,6 +2392,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     page,
     request,
   }) => {
+    test.skip(COUNTRY_ID === 2, "Novo Wallet payment is not available in UAE.");
+    console.log(`===== Test Skipped: Novo Wallet not available in ${COUNTRY_ID} ===== `);
 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
@@ -2361,7 +2420,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     const sidePanelApi = await request.get(
-      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=1&channel=web`
+      `${BACKEND_URL}/api/booking/side-panel/cinemas/${cinemaId}/sessions/${bookingResult.sessionId}?country_id=${COUNTRY_ID}&channel=web`
     );
     const sidePanelApiData = await sidePanelApi.json();
     const sidePanelData = sidePanelApiData.data;
@@ -2417,7 +2476,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       // await expect(
       //   page.getByRole("heading", { name: "Snack Time!" })
       // ).toBeVisible();
-      await expect(page.getByText("Snack Time!")).toBeVisible();
+      await expect(page.getByText('Snack Time!')).toBeVisible();
 
       console.log("\n=== Starting F&B Selection Flow (No Modifiers Only) ===");
 
@@ -2496,20 +2555,21 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ======================================================
     // VERIFY PAYMENT OPTION VISIBILITY
     // ======================================================
-    const creditCardOption = page
-      .locator("div")
-      .filter({ hasText: /^Credit Card$/ })
-      .first();
+    if (COUNTRY_ID !== 2) {
+      const creditCardOption = page
+        .locator("div")
+        .filter({ hasText: /^Credit Card$/ })
+        .first();
 
-    await expect(creditCardOption).toBeVisible();
+      await expect(creditCardOption).toBeVisible();
+    }
 
     // ================= COMPLETE NOVO WALLET PAYMENT =================
     await applyNovoWalletOnly(page, request, authToken, grandTotal);
 
-    console.log("\n=== Test Completed Successfully ===");
     console.log(`Movie: ${sidePanelData.movie.movie_name}`);
     console.log(`Seats: ${selectedSeats.join(", ")}`);
     console.log(`skip_fnb: ${skipFnb}`);
-    console.log(`Total: QAR ${grandTotal}`);
+    console.log(`Total: ${CURRENCY} ${grandTotal}`);
   });
 });

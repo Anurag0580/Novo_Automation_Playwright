@@ -1,4 +1,5 @@
 import { expect } from "@playwright/test";
+import { CURRENCY } from "./envConfig.js";
 
 export async function captureLandingBannerFileName(page, gameName, baseUrl) {
   const landingBannerImg = page.getByRole("img", { name: gameName }).first();
@@ -96,24 +97,24 @@ export async function getCheckoutPanel(page) {
 
 export async function verifyTicketAndFnbInCheckout(checkoutPanel, apiTicketAmount, apiFnbAmount) {
   await expect(checkoutPanel.getByText("Ticket").first()).toBeVisible();
-  await expect(checkoutPanel.getByText(`+ QAR ${Math.round(apiTicketAmount)}`).first()).toBeVisible();
+  await expect(checkoutPanel.getByText(`+ ${CURRENCY} ${Math.round(apiTicketAmount)}`).first()).toBeVisible();
 
   if (Math.round(apiFnbAmount) > 0) {
     await expect(checkoutPanel.getByText("F&B").first()).toBeVisible();
-    await expect(checkoutPanel.getByText(`+ QAR ${Math.round(apiFnbAmount)}`).first()).toBeVisible();
+    await expect(checkoutPanel.getByText(`+ ${CURRENCY} ${Math.round(apiFnbAmount)}`).first()).toBeVisible();
   } else {
     await expect(checkoutPanel.getByText("F&B").first()).toHaveCount(0);
   }
 
   console.log(
-    `Final checkout amounts validated: Ticket=QAR ${Math.round(apiTicketAmount)}, F&B=QAR ${Math.round(apiFnbAmount)}`,
+    `Final checkout amounts validated: Ticket=${CURRENCY} ${Math.round(apiTicketAmount)}, F&B=${CURRENCY} ${Math.round(apiFnbAmount)}`,
   );
 }
 
 export async function verifyTotalInCheckout(checkoutPanel, apiTotalAmount) {
   await expect(checkoutPanel.getByText("Total Price").first()).toBeVisible();
-  await expect(checkoutPanel.getByText(`QAR ${Math.round(apiTotalAmount)}`).first()).toBeVisible();
-  console.log(`Final checkout total validated: QAR ${Math.round(apiTotalAmount)}`);
+  await expect(checkoutPanel.getByText(`${CURRENCY} ${Math.round(apiTotalAmount)}`).first()).toBeVisible();
+  console.log(`Final checkout total validated: ${CURRENCY} ${Math.round(apiTotalAmount)}`);
 }
 
 export async function verifyConcessionItemsInCheckout(checkoutPanel, concessionItemData, gameName, includeSocks) {
