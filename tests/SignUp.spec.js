@@ -54,13 +54,14 @@ test.describe('User Registration – Sign Up Flow and Validation Flows', () => {
   });
 
   test('TC_03_Verify validation message is displayed for already registered email', async ({ page }) => {
+    let password = 'Anurag@12345';
     await navigateToSignup(page);
 
     await page.getByRole('textbox', { name: /first name/i }).fill('Test');
     await page.getByRole('textbox', { name: /last name/i }).fill('User');
     await page.getByRole('textbox', { name: 'Enter your email' }).fill(Email);
-  await page.getByRole('textbox', { name: 'Enter your password' }).fill(Password);
-  await page.getByRole('textbox', { name: 'Confirm your password' }).fill(Password);
+    await page.getByRole('textbox', { name: 'Enter your password' }).fill(password);
+    await page.getByRole('textbox', { name: 'Confirm your password' }).fill(password);
 
     //DOB dropdowns
 // Year
