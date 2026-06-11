@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 import { BASE_URL, BACKEND_URL, COUNTRY_ID, COUNTRY_NAME, CURRENCY } from "./envConfig.js";
 
 // ==================== CONSTANTS ====================
-// const TEST_CARD_NUMBER = '2000001537711200'; // For Qatar
-const TEST_CARD_NUMBER = '9950082515665964'; // For UAE
+const TEST_CARD_NUMBER = COUNTRY_ID === 2 ? '9950082515665964' : '2000001537711200'; // For UAE and Qatar
 const GIFT_CARDS_API_PATH = '/api/gifts-wallets/gift-cards/all';
 
 // ==================== HELPER FUNCTIONS ====================
