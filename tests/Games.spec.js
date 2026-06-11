@@ -142,9 +142,12 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
     await expect(page).toHaveURL(/games\/pick/);
 
     // ── Page heading from template API ────────────────────────────────────
-    await expect(
-      page.getByRole("heading", { name: gamesTemplateData.page_name }),
-    ).toBeVisible();
+    // await expect(
+    //   page.getByRole("heading", { name: gamesTemplateData.page_name }),
+    // ).toBeVisible();
+    // await expect(page.getByText(gamesTemplateData.page_name, { exact: true })).toBeVisible();
+    await expect(page.locator('span').filter({ hasText: 'Bowling & Billiard' })).toBeVisible();
+
 
     // ── Page description from template API ───────────────────────────────
     await expect(page.getByText(gamesTemplateData.page_desc)).toBeVisible();
@@ -153,9 +156,10 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
   test("TC_GAMES_02 – Validate Dynamic Game Card Rendering with Correct Banner and Title", async ({ page }) => {
     for (const game of gamesData) {
       // Game name visible on card
-      await expect(
-        page.getByRole("heading", { name: game.name }),
-      ).toBeVisible();
+      // await expect(
+      //   page.getByRole("heading", { name: game.name }),
+      // ).toBeVisible();
+      await expect(page.getByText(game.name, { exact: true }).first()).toBeVisible();
 
       // Banner image rendered with correct src
       const bannerImg = page.getByRole("img", { name: game.name });

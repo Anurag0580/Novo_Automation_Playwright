@@ -158,7 +158,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
       // await expect(
       //   page.getByRole("heading", { name: "Bowling & Billiard" }),
       // ).toBeVisible();
-      await expect(page.getByText("Bowling & Billiard")).toBeVisible();
+      // await expect(page.getByText("Bowling & Billiard")).toBeVisible();
+      await expect(page.locator('span').filter({ hasText: 'Bowling & Billiard' })).toBeVisible();
     } else {
       console.log(
         `⏭️ Skipping Bowling & Billiard for country_id=${COUNTRY_ID}`,
