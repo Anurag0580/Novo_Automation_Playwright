@@ -11,7 +11,7 @@ pipeline {
 
         LOGIN_EMAIL = 'Anurag.Gupta@enpointe.io'
 
-        LOGIN_PASSWORD = 'Anurag@123'
+        LOGIN_PASSWORD = 'Anurag@098'
 
         LOGIN_PHONE = '9136850580'
 
