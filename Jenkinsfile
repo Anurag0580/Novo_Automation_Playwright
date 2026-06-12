@@ -9,9 +9,9 @@ pipeline {
 
         REAL_DOMAIN_URL = 'https://www.novocinemas.com'
 
-        LOGIN_EMAIL = 'Anurag.Gupta@enpointe.io'
+        LOGIN_EMAIL = credentials('novo-uae-login-email')
 
-        LOGIN_PASSWORD = 'Anurag@098'
+        LOGIN_PASSWORD = credentials('novo-uae-login-password')
 
         LOGIN_PHONE = '9136850580'
 
