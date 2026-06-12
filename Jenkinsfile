@@ -40,32 +40,34 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
 
         stage('Run Tests') {
             steps {
-                bat 'npx playwright test --project=chromium'
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    bat 'npx playwright test --project=chromium'
+                }
             }
         }
     }
 
     post {
-    always {
+        always {
 
-        archiveArtifacts(
-    artifacts: '''
+            archiveArtifacts(
+                artifacts: '''
 playwright-report/**,
 test-results/**,
 blob-report/**
 ''',
-    allowEmptyArchive: true,
-    fingerprint: true
-)
+                allowEmptyArchive: true,
+                fingerprint: true
+            )
 
-        publishHTML([
-            allowMissing: true,
-            alwaysLinkToLastBuild: true,
-            keepAll: true,
-            reportDir: 'playwright-report',
-            reportFiles: 'index.html',
-            reportName: 'Playwright Report'
-        ])
+            publishHTML(target: [
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'playwright-report',
+                reportFiles: 'index.html',
+                reportName: 'Playwright Report'
+            ])
+        }
     }
-}
 }
