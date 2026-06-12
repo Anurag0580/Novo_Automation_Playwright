@@ -1,6 +1,23 @@
 pipeline {
     agent any
 
+    environment {
+
+        PROD_FRONTEND_URL = 'https://uae.novocinemas.com'
+
+        PROD_BACKEND_URL = 'https://uae-api.novocinemas.com'
+
+        REAL_DOMAIN_URL = 'https://www.novocinemas.com'
+
+        LOGIN_EMAIL = 'Anurag.Gupta@enpointe.io'
+
+        LOGIN_PASSWORD = 'Anurag@123'
+
+        LOGIN_PHONE = '9136850580'
+
+    }
+
+
     stages {
 
         stage('Checkout') {
