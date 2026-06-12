@@ -46,8 +46,27 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
     }
 
     post {
-        always {
-            archiveArtifacts artifacts: 'playwright-report/**', allowEmptyArchive: true, fingerprint: true
-        }
+    always {
+
+        archiveArtifacts(
+            artifacts: '''
+playwright-report/**,
+test-results/**/*.png,
+test-results/**/*.webm,
+test-results/**/*.zip
+''',
+            allowEmptyArchive: true,
+            fingerprint: true
+        )
+
+        publishHTML([
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: 'playwright-report',
+            reportFiles: 'index.html',
+            reportName: 'Playwright Report'
+        ])
     }
+}
 }
