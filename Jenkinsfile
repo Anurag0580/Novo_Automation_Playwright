@@ -49,15 +49,14 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
     always {
 
         archiveArtifacts(
-            artifacts: '''
+    artifacts: '''
 playwright-report/**,
-test-results/**/*.png,
-test-results/**/*.webm,
-test-results/**/*.zip
+test-results/**,
+blob-report/**
 ''',
-            allowEmptyArchive: true,
-            fingerprint: true
-        )
+    allowEmptyArchive: true,
+    fingerprint: true
+)
 
         publishHTML([
             allowMissing: true,
