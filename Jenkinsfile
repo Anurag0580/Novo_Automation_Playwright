@@ -3,9 +3,9 @@ pipeline {
 
     environment {
 
-        PROD_FRONTEND_URL = 'https://uae.novocinemas.com'
+        PROD_FRONTEND_URL = 'https://qa.novocinemas.com'
 
-        PROD_BACKEND_URL = 'https://uae-api.novocinemas.com'
+        PROD_BACKEND_URL = 'https://backend.novocinemas.com'
 
         REAL_DOMAIN_URL = 'https://www.novocinemas.com'
 
