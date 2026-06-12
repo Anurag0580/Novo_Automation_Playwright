@@ -2,21 +2,9 @@ pipeline {
     agent any
 
     environment {
-
-        PROD_FRONTEND_URL = 'https://uae.novocinemas.com'
-
-        PROD_BACKEND_URL = 'https://uae-api.novocinemas.com'
-
-        REAL_DOMAIN_URL = 'https://www.novocinemas.com'
-
         LOGIN_EMAIL = credentials('novo-uae-login-email')
-
         LOGIN_PASSWORD = credentials('novo-uae-login-password')
-
-        LOGIN_PHONE = '9136850580'
-
     }
-
 
     stages {
 
@@ -50,10 +38,10 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
         }
 
         stage('Install Chromium') {
-            steps {
-                bat 'npx playwright install chromium'
-            }
-        }
+    steps {
+        bat 'npx playwright install --with-deps chromium'
+    }
+}
 
         stage('Run Tests') {
             steps {
@@ -65,26 +53,60 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
     }
 
     post {
-        always {
+    always {
 
-            archiveArtifacts(
-                artifacts: '''
+        archiveArtifacts(
+            artifacts: '''
 playwright-report/**,
 test-results/**,
 blob-report/**
 ''',
-                allowEmptyArchive: true,
-                fingerprint: true
-            )
+            allowEmptyArchive: true,
+            fingerprint: true
+        )
 
-            publishHTML(target: [
-                allowMissing: true,
-                alwaysLinkToLastBuild: true,
-                keepAll: true,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'Playwright Report'
-            ])
+        junit(
+            testResults: 'playwright-report/results.xml',
+            allowEmptyResults: true,
+            keepLongStdio: true
+        )
+
+        publishHTML(target: [
+            allowMissing: true,
+            alwaysLinkToLastBuild: true,
+            keepAll: true,
+            reportDir: 'playwright-report',
+            reportFiles: 'index.html',
+            reportName: 'Playwright Report'
+        ])
+
+        script {
+
+            echo """
+
+========================================================
+
+🚀 Novo UAE Regression
+
+🌐 Environment : UAE
+🌍 Browser      : Chromium
+🌿 Branch       : uae-preprod
+🔨 Build        : #${env.BUILD_NUMBER}
+⏱ Duration      : ${currentBuild.durationString}
+
+📄 HTML Report
+${env.BUILD_URL}Playwright_20Report/
+
+📦 Artifacts
+✅ HTML Report
+✅ Screenshots
+✅ Videos
+✅ Traces
+
+========================================================
+
+"""
         }
     }
+}
 }
