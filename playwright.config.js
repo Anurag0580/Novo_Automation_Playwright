@@ -18,7 +18,12 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
 
-  reporter: [['html', { open: 'never' }]],
+  reporter: [
+  ['list'],
+  ['html', { open: 'never' }],
+  ['json', { outputFile: 'playwright-report/results.json' }],
+  ['junit', { outputFile: 'playwright-report/results.xml' }]
+],
   outputDir: 'test-results',
 
   use: {
