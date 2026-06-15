@@ -76,9 +76,9 @@ blob-report/**
                 allowMissing: true,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
-                reportDir: 'playwright-report',
-                reportFiles: 'index.html',
-                reportName: 'Playwright Report'
+                // reportDir: 'playwright-report',
+                // reportFiles: 'index.html',
+                // reportName: 'Playwright Report'
                 reportDir: 'allure-report',
                 reportFiles: 'index.html',
                 reportName: 'Allure Report'
