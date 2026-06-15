@@ -98,9 +98,10 @@ blob-report/**
                     long seconds = (durationMs % 60000) / 1000
 
                     def failedTests = []
+                    def flakyTests = []
 
-                    def collectFailedTests
-                    collectFailedTests = { node ->
+                    def collectTests
+                    collectTests = { node ->
 
                         if (node instanceof Map) {
 
@@ -108,33 +109,41 @@ blob-report/**
 
                                 node.tests?.each { t ->
 
-                                    boolean isFailed = false
+                                    boolean hasFailed = false
+                                    boolean hasPassed = false
 
                                     t.results?.each { r ->
+
                                         if (r.status == "failed") {
-                                            isFailed = true
+                                            hasFailed = true
+                                        }
+
+                                        if (r.status == "passed") {
+                                            hasPassed = true
                                         }
                                     }
 
-                                    if (isFailed) {
+                                    if (hasFailed && hasPassed) {
+                                        flakyTests << node.title
+                                    } else if (hasFailed) {
                                         failedTests << node.title
                                     }
                                 }
                             }
 
                             node.values().each { value ->
-                                collectFailedTests(value)
+                                collectTests(value)
                             }
                         }
 
                         if (node instanceof List) {
                             node.each {
-                                collectFailedTests(it)
+                                collectTests(it)
                             }
                         }
                     }
 
-                    collectFailedTests(results)
+                    collectTests(results)
 
                     echo """
 
@@ -162,17 +171,32 @@ ${env.BUILD_URL}Playwright_20Report/
 
 """
 
-                    if (!failedTests.isEmpty()) {
+                    if (!failedTests.isEmpty() || !flakyTests.isEmpty()) {
 
-                        echo ""
-                        echo "============== ❌ FAILED TEST CASES =============="
-                        echo ""
+                        if (!failedTests.isEmpty()) {
+                            echo ""
+                            echo "============ 🔴 TRULY FAILED TEST CASES ============"
+                            echo ""
 
-                        failedTests.unique().each {
-                            echo "• ${it}"
+                            failedTests.unique().each {
+                                echo "• ${it}"
+                            }
+
+                            echo ""
                         }
 
-                        echo ""
+                        if (!flakyTests.isEmpty()) {
+                            echo ""
+                            echo "============ 🟠 FLAKY TEST CASES ============"
+                            echo ""
+
+                            flakyTests.unique().each {
+                                echo "• ${it}"
+                            }
+
+                            echo ""
+                        }
+
                         echo "=================================================="
                     }
                 }
