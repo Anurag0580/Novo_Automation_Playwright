@@ -47,10 +47,20 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     bat 'npx playwright test --project=chromium'
-                    bat 'allure generate allure-results --clean -o allure-report'
                 }
             }
         }
+        stage('Generate Allure Report') {
+    steps {
+        bat '''
+        if exist allure-results (
+            npx allure generate allure-results --clean -o allure-report
+        ) else (
+            echo Allure results not found.
+        )
+        '''
+    }
+}
     }
 
     post {
@@ -59,6 +69,8 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
             archiveArtifacts(
                 artifacts: '''
 playwright-report/**,
+allure-report/**,
+allure-results/**,
 test-results/**,
 blob-report/**
 ''',
@@ -73,12 +85,9 @@ blob-report/**
             )
 
             publishHTML(target: [
-                allowMissing: true,
+                allowMissing: false,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
-                // reportDir: 'playwright-report',
-                // reportFiles: 'index.html',
-                // reportName: 'Playwright Report'
                 reportDir: 'allure-report',
                 reportFiles: 'index.html',
                 reportName: 'Allure Report'
@@ -169,7 +178,7 @@ blob-report/**
 
 📄 HTML Report
 
-${env.BUILD_URL}Playwright_20Report/
+${env.BUILD_URL}Allure_20Report/
 
 ========================================================
 
