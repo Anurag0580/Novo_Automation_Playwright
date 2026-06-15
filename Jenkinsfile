@@ -47,6 +47,7 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     bat 'npx playwright test --project=chromium'
+                    bat 'allure generate allure-results --clean -o allure-report'
                 }
             }
         }
@@ -78,6 +79,9 @@ blob-report/**
                 reportDir: 'playwright-report',
                 reportFiles: 'index.html',
                 reportName: 'Playwright Report'
+                reportDir: 'allure-report',
+                reportFiles: 'index.html',
+                reportName: 'Allure Report'
             ])
 
             script {
