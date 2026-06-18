@@ -81,9 +81,19 @@ async function firstVisibleOfferTitle(page, title) {
 
 async function getOffersCarouselNextButton(page) {
   const selectors = [
-    '.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)',
+    // Common slick/carousel next controls
     '.slick-next',
-    'button[aria-label="Next"]'
+    'button[aria-label="Next"]',
+    'button[aria-label="right"]',
+    'button:has(svg[aria-hidden="true"]):has-text("Next")',
+
+    // Some implementations render the button inside the active slide container
+    '.slick-slide.slick-active button:nth-child(3)',
+    '.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)',
+
+    // Generic arrow button fallback (covers icon-only buttons)
+    'button:has(svg):has-text("Next")',
+    'button:has(svg):has([class*="arrow" i])'
   ];
 
   for (const selector of selectors) {
@@ -95,6 +105,8 @@ async function getOffersCarouselNextButton(page) {
 
   return null;
 }
+
+
 
 async function revealOfferInCarousel(page, title, maxMoves = 12) {
   await page.getByText('Popular Bank Offers').scrollIntoViewIfNeeded().catch(() => {});

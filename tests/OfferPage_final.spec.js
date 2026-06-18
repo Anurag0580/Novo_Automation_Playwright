@@ -12,6 +12,7 @@ import {
   API_BASE,
   HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
+
 import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./helpers/envConfig.js";
 
 let backendData;
@@ -140,9 +141,15 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
       }
 
       if (verifiedOffers.size < all.length) {
-        await rightButton.click();
+        const rightButton = await getOffersCarouselNextButton(page);
+        if (!rightButton) {
+          throw new Error('Carousel next button not found while verifying all offers');
+        }
+
+        await rightButton.click({ force: true });
         await page.waitForTimeout(1000); // Wait for transition animation to complete
       }
+
     }
 
     expect(verifiedOffers.size).toBe(all.length);
