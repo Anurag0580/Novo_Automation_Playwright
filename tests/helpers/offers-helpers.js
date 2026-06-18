@@ -274,6 +274,16 @@ export async function validateCard(
     cardNumber
   );
 
+  const dibsyPublicKeyPromise =
+    COUNTRY_ID === 1
+      ? page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/payment/dibsy/public-key/") &&
+            response.status() === 200,
+          { timeout: 20000 }
+        )
+      : null;
+
   await offerCard
     .getByRole("textbox", { name: "Enter Card Number" })
     .first()
@@ -433,7 +443,6 @@ export async function validateCardFlow(page) {
   await expect(
     selectedOfferCard.getByRole("textbox", { name: "Enter Card Number" })
   ).toBeVisible({ timeout: 10000 });
-  const offerPanel = await ensureBankOfferCardFormVisible(page);
 
   const { panEntriesPromise, offerValidatePromise } =
     setupValidationInterceptors(page);
@@ -461,35 +470,12 @@ export async function validateCardFlow(page) {
 export async function handleBankOffersFlow(page, request, sessionId, cinemaId) {
   await verifyBankOffers(page, request, sessionId, cinemaId);
 
-  const dibsyPublicKeyPromise =
-    COUNTRY_ID === 1
-      ? page.waitForResponse(
-          (response) =>
-            response.url().includes("/api/payment/dibsy/public-key/") &&
-            response.status() === 200,
-          { timeout: 15000 }
-        )
-      : null;
-
   await page
     .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
     .first()
     .click();
 
-  if (dibsyPublicKeyPromise) {
-    console.log(`Clicked ${PRIMARY_BANK_OFFER.name} - waiting for Dibsy API...`);
-    const dibsyResponse = await dibsyPublicKeyPromise;
-    const dibsyPublicKeyData = await dibsyResponse.json();
-
-    await page.evaluate(
-      ([publicKeyData]) => {
-        localStorage.setItem("dibsy_public_key", publicKeyData.data.publicKey);
-        localStorage.setItem("dibsy_merchant_id", publicKeyData.data.merchantId);
-        localStorage.setItem("dibsy_data", JSON.stringify(publicKeyData.data));
-      },
-      [dibsyPublicKeyData]
-    );
-  } else {
+  if (COUNTRY_ID !== 1) {
     console.log(
       `Clicked ${PRIMARY_BANK_OFFER.name} - ${COUNTRY_NAME} uses CyberSource; skipping Dibsy public-key API`
     );

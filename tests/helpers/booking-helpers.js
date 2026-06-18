@@ -470,8 +470,8 @@ export async function loginAndCaptureTokenBooking(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
-  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // Wait until token is captured
   await expect.poll(() => authToken, { timeout: 10000 }).toBeTruthy();
@@ -535,8 +535,8 @@ export async function loginAndCaptureTokenLoyalty(page) {
     }
   }
 
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
-  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // ✅ Inject token into localStorage if captured
   if (authToken) {
@@ -599,8 +599,8 @@ export async function login(page, email, password) {
     .getByRole("textbox", { name: "Enter your password" })
     .fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
-  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 }
 
 export async function injectAuthToken(page, authToken) {
