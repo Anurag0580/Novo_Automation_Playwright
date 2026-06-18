@@ -12,6 +12,12 @@ const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 
 const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
 const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
+const SPORTS_GENRE = "sports";
+
+const hasSportsGenre = (movie) =>
+  movie.movie_genre?.some(
+    (genre) => genre.genre_name?.trim().toLowerCase() === SPORTS_GENRE
+  ) ?? false;
 
 if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
   throw new Error("❌ LOGIN_EMAIL or LOGIN_PASSWORD missing in env");
@@ -33,6 +39,7 @@ export async function fetchMoviesFromAPI(request) {
         movie_title: m.movie_title,
         movie_id: m.movie_id,
         movie_slug: m.movie_slug,
+        movie_genre: m.movie_genre,
       })) || []
     );
   } catch (e) {
@@ -46,6 +53,8 @@ export async function selectMovieDynamically(page, request) {
 
   let selectedMovie = null;
   for (const m of apiMovies) {
+    if (hasSportsGenre(m)) continue;
+
     const title = m.movie_title;
     if (!title?.trim()) continue;
     const card = page.getByRole("link").filter({ hasText: title }).first();
@@ -61,10 +70,7 @@ export async function selectMovieDynamically(page, request) {
   }
 
   if (!selectedMovie) {
-    const anyCard = page.locator('[href*="/movies/"]').first();
-    await anyCard.waitFor({ state: "visible", timeout: 8000 });
-    await anyCard.scrollIntoViewIfNeeded();
-    await anyCard.click();
+    throw new Error("No non-sports movie from API is visible on the homepage");
   }
   return selectedMovie;
 }
@@ -464,10 +470,8 @@ export async function loginAndCaptureTokenBooking(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-  //   timeout: 15000,
-  // });
-  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // Wait until token is captured
   await expect.poll(() => authToken, { timeout: 10000 }).toBeTruthy();
@@ -531,8 +535,8 @@ export async function loginAndCaptureTokenLoyalty(page) {
     }
   }
 
-  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
-  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // ✅ Inject token into localStorage if captured
   if (authToken) {
@@ -595,10 +599,8 @@ export async function login(page, email, password) {
     .getByRole("textbox", { name: "Enter your password" })
     .fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-  //   timeout: 15000,
-  // });
-  await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
+  await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
+  // await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 }
 
 export async function injectAuthToken(page, authToken) {
@@ -1872,35 +1874,10 @@ export async function setupTest(page, request) {
   // Set a reasonable default timeout for page operations
   // page.setDefaultTimeout(120000); // 2 minutes
 
-   await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
-  // Select movie
-  const apiMovies = await fetchMoviesFromAPI(request);
-  if (!apiMovies.length) throw new Error("No movies returned from API");
+  await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/novocinemas\.com\/home/);
 
-  let selectedMovie = null;
-  for (const m of apiMovies) {
-    const title = m.movie_title;
-    if (!title?.trim()) continue;
-
-    const card = page.getByRole("link").filter({ hasText: title }).first();
-    try {
-      await card.waitFor({ state: "visible", timeout: 4000 });
-      await card.scrollIntoViewIfNeeded();
-      await card.click();
-      selectedMovie = m;
-      break;
-    } catch {
-      continue;
-    }
-  }
-
-  if (!selectedMovie) {
-    const anyCard = page.locator('[href*="/movies/"]').first();
-    await anyCard.waitFor({ state: "visible", timeout: 8000 });
-    await anyCard.scrollIntoViewIfNeeded();
-    await anyCard.click();
-  }
+  const selectedMovie = await selectMovieDynamically(page, request);
 
   // Get movie details
   let movieId = selectedMovie?.movie_id;
