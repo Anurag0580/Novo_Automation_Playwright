@@ -80,7 +80,7 @@ import {
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 const skipToPaymentButtonName = new RegExp(
-  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY})?$`,
+  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY}(?:\\s+\\d+(?:\\.\\d{1,2})?)?)?$`,
   "i"
 );
 
@@ -1440,9 +1440,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const skipToPaymentBtn = page.getByRole("button", {
       name: skipToPaymentButtonName,
     });
+    let clickedSkipToPayment = false;
 
     if (await skipToPaymentBtn.isVisible()) {
       await skipToPaymentBtn.click();
+      clickedSkipToPayment = true;
       console.log(`➡️ Clicked: Skip to Payment ${CURRENCY}`);
     } else {
       await page.getByRole("button", { name: "Continue" }).click();
@@ -1459,6 +1461,39 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       selectSeatsResponsePromise,
       offersApplyPromise
     );
+
+    console.log("Reservation ID:", reservationId);
+    console.log("skip_fnb:", skipFnb);
+
+    if (clickedSkipToPayment || skipFnb) {
+      console.log("Direct Payment route");
+      await page.waitForURL(/\/payment/);
+    } else {
+      console.log("skip_fnb=false -> Navigated to F&B");
+      await page.waitForURL(/\/fnb/);
+
+      await verifyFNBPageBasics(
+        page,
+        testData.sidePanelApiData,
+        testData.movie,
+        testData.cinemaId,
+        reservationId
+      );
+
+      const skipAndContinueBtn = page.getByRole("button", {
+        name: "Skip and Continue",
+      });
+
+      if (await skipAndContinueBtn.isVisible().catch(() => false)) {
+        await skipAndContinueBtn.click();
+        console.log("Clicked: Skip and Continue");
+      } else {
+        await page.getByRole("button", { name: "Continue" }).click();
+        console.log("Clicked: Continue from F&B");
+      }
+
+      await page.waitForURL(/\/payment/);
+    }
 
     // Verify payment page
     await verifyPaymentPageBasics(page, testData.sidePanelApiData);
@@ -1707,10 +1742,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       setupPaymentInterceptors(page);
 
     // ===============================
-    // CLICK CONTINUE / SKIP TO PAYMENT (SAFE)
+    // CLICK CONTINUE TO NAVIGATE THROUGH F&B
     // ===============================
-    const continueBtn = page.getByRole("button", { name: "Continue" });
-    await continueBtn.click();
+    await page.getByRole("button", { name: "Continue" }).click();
     console.log("➡️ Clicked: Continue");
 
     // ===============================
@@ -1752,9 +1786,12 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         name: "Skip and Continue",
       });
 
-      if (await skipAndContinueBtn.isVisible()) {
+      if (await skipAndContinueBtn.isVisible().catch(() => false)) {
         await skipAndContinueBtn.click();
         console.log("➡️ Clicked: Skip and Continue");
+      } else {
+        await page.getByRole("button", { name: "Continue" }).click();
+        console.log("➡️ Clicked: Continue from F&B");
       }
 
       await page.waitForURL(/\/payment/);
