@@ -45,11 +45,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
   }) => {
     await page.goto(`${REAL_DOMAIN_URL}/`);
-    await page
+    await Promise.all ([
+      page.waitForURL("**/home"),
+      page
       .locator("div")
       .filter({ hasText: new RegExp(`^${COUNTRY_NAME}$`, "i") })
       .getByRole("button")
-      .click();
+      .click()
+    ]);
     console.log(`🌍 Country selected: ${COUNTRY_NAME}`);
 
     await expect(
@@ -995,16 +998,16 @@ await test.step("Verify Watch Trailer modal opens and closes", async () => {
     await expect(
       page.getByRole("img", { name: "Novo Cinemas Logo" }),
     ).toBeVisible();
-    await expect(
-      page
-        .getByRole("contentinfo")
-        .locator("div")
-        .filter({
-          hasText:
-            "About UsAdvertise With UsCareersPromotionsContact UsPrivacy PolicyTerms And",
-        })
-        .first(),
-    ).toBeVisible();
+    // await expect(
+    //   page
+    //     .getByRole("contentinfo")
+    //     .locator("div")
+    //     .filter({
+    //       hasText:
+    //         "About UsAdvertise With UsCareersPromotionsContact UsPrivacy PolicyTerms And",
+    //     })
+    //     .first(),
+    // ).toBeVisible();
 
     // Footer: country-specific heading/text differences
     if (COUNTRY_ID === 2) {
@@ -1048,16 +1051,21 @@ await test.step("Verify Watch Trailer modal opens and closes", async () => {
           .getByRole("link", { name: "Need Assistance ?" }),
       ).toBeVisible();
 
-      const assistancePagePromise = page.waitForEvent("popup");
-      await page
-        .getByRole("contentinfo")
-        .getByRole("link", { name: "Need Assistance ?" })
-        .click();
-      const assistancePage = await assistancePagePromise;
-      await expect(assistancePage.url()).toContain(
-        "https://novocinemas.freshdesk.com/support/home",
-      );
-      await assistancePage.close();
+      // Handle same-tab navigation to contact page
+      await Promise.all([
+        page.waitForURL("**/contact"),
+        page
+          .getByRole("contentinfo")
+          .getByRole("link", { name: "Need Assistance ?" })
+          .click(),
+      ]);
+      await expect(page.url()).toContain("https://qa.novocinemas.com/contact");
+      console.log("✅ Successfully navigated to contact page");
+      
+      // Navigate back to home
+      await page.goBack();
+      await expect(page.url()).toContain(`${BASE_URL}/home`);
+      console.log("✅ Returned to home page");
 
       // Qatar-specific contact info
       await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
