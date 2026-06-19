@@ -318,42 +318,114 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     // ===============================
     // 3️⃣ Watch Trailer (Loop Search)
     // ===============================
-    await test.step("Verify Watch Trailer modal opens and closes", async () => {
-      const maxSlides = 5;
-      let trailerFound = false;
+await test.step("Verify Watch Trailer modal opens and closes", async () => {
+  const maxSlides = 5;
+  let trailerFound = false;
 
-      const nextBtn = page.locator(".slick-arrow.slick-next").first();
+  const nextBtn = page.locator(".slick-arrow.slick-next").first();
 
-      for (let i = 0; i < maxSlides; i++) {
-        const trailerBtn = activeSlide()
-          .locator(
-            'button:has-text("Watch Trailer"), [aria-label*="play"], svg[class*="lucide"]',
-          )
-          .first();
+  const activeSlide = () =>
+    page.locator(".slick-slide.slick-active:not(.slick-cloned)").first();
 
-        if (await trailerBtn.isVisible().catch(() => false)) {
-          trailerFound = true;
-          await trailerBtn.click();
+  for (let i = 0; i < maxSlides; i++) {
+    console.log(`\n🔍 Checking Slide ${i + 1}`);
 
-          // Wait for YouTube iframe to attach to DOM
-          const ytIframe = page.locator('iframe[src*="youtube"]');
+    const currentIndex = await activeSlide().getAttribute("data-index");
+    console.log("Current Active Slide Index:", currentIndex);
 
-          await ytIframe.waitFor({ state: "attached", timeout: 20000 });
-          await expect(ytIframe).toBeVisible({ timeout: 20000 });
-          // Close modal
-          await page.keyboard.press("Escape");
+    const slideText = await activeSlide().textContent();
+    console.log("Slide Content:", slideText?.trim());
 
-          break;
-        }
+    // Trailer button (play icon container)
+    const trailerBtn = activeSlide()
+      .locator("div.cursor-pointer")
+      .filter({
+        has: page.locator("svg.lucide-play"),
+      })
+      .first();
 
-        if (await nextBtn.isVisible().catch(() => false)) {
-          await nextBtn.click();
-          await expect(activeSlide()).toBeVisible();
-        }
-      }
+    const trailerCount = await trailerBtn.count();
+    console.log("Trailer Button Count:", trailerCount);
 
-      expect(trailerFound).toBe(true);
-    });
+    // If trailer found
+    if (
+      trailerCount > 0 &&
+      (await trailerBtn.isVisible().catch(() => false))
+    ) {
+      console.log(`✅ Trailer found on slide ${currentIndex}`);
+
+      trailerFound = true;
+      await trailerBtn.click();
+
+      const ytIframe = page.locator('iframe[src*="youtube"]');
+
+      console.log("⏳ Waiting for trailer modal...");
+
+      await ytIframe.waitFor({
+        state: "attached",
+        timeout: 20000,
+      });
+
+      await expect(ytIframe).toBeVisible({
+        timeout: 20000,
+      });
+
+      console.log("✅ Trailer modal opened successfully");
+
+      await page.keyboard.press("Escape");
+      console.log("❌ Trailer modal closed");
+
+      break;
+    }
+
+    console.log(`⚠️ Trailer not found on slide ${currentIndex}`);
+
+    // FIX 1: Force click next OR wait for auto-scroll
+    if (await nextBtn.count()) {
+      console.log("➡️ Clicking NEXT button...");
+
+      const beforeIndex = await activeSlide().getAttribute("data-index");
+
+      await nextBtn.click({ force: true });
+
+      await page.waitForFunction(
+        (prevIndex) => {
+          const current = document
+            .querySelector(".slick-slide.slick-active")
+            ?.getAttribute("data-index");
+          return current !== prevIndex;
+        },
+        beforeIndex,
+        { timeout: 5000 }
+      );
+
+      const afterIndex = await activeSlide().getAttribute("data-index");
+      console.log(`✅ Slide changed from ${beforeIndex} → ${afterIndex}`);
+    } else {
+      console.log("⏳ Next button unavailable, waiting for auto-scroll...");
+
+      const beforeIndex = await activeSlide().getAttribute("data-index");
+
+      await page.waitForFunction(
+        (prevIndex) => {
+          const current = document
+            .querySelector(".slick-slide.slick-active")
+            ?.getAttribute("data-index");
+          return current !== prevIndex;
+        },
+        beforeIndex,
+        { timeout: 8000 }
+      );
+
+      const afterIndex = await activeSlide().getAttribute("data-index");
+      console.log(`✅ Auto-scrolled from ${beforeIndex} → ${afterIndex}`);
+    }
+  }
+
+  console.log("Final trailerFound value:", trailerFound);
+
+  expect(trailerFound).toBe(true);
+});
 
     // ===============================
     // 4️⃣ Next / Previous Navigation
