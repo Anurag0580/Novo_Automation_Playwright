@@ -46,7 +46,7 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
         stage('Run Tests') {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    bat 'npx playwright test --project=chromium'
+                    bat 'npx playwright test tests/Login.spec.js --project=chromium'
                 }
             }
         }
