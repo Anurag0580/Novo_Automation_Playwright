@@ -174,7 +174,7 @@ blob-report/**
 
 🌐 Environment : Qatar
 🌍 Browser      : Chromium
-🌿 Branch       : stable-preprod
+🌿 Branch       : main
 🔨 Build        : #${env.BUILD_NUMBER}
 
 📄 HTML Report
