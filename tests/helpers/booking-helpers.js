@@ -497,7 +497,7 @@ export async function loginAndCaptureTokenLoyalty(page) {
     const headers = req.headers();
     if (headers["authorization"]?.startsWith("Bearer")) {
       authToken = headers["authorization"];
-      console.log("Captured Auth Token:", authToken.substring(0, 30) + "...");
+      // console.log("Captured Auth Token:", authToken.substring(0, 30) + "..."); 
     }
   };
   page.on("request", tokenListener);
@@ -586,7 +586,7 @@ export function setupAuthTokenCapture(page) {
     const headers = req.headers();
     if (headers["authorization"]?.startsWith("Bearer")) {
       authToken = headers["authorization"];
-      console.log("Captured Auth Token:", authToken);
+      // console.log("Captured Auth Token:", authToken);
     }
   };
   page.on("request", tokenListener);
