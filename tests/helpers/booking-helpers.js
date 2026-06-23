@@ -772,98 +772,105 @@ export async function selectSeatsWithAreaCategory(page, layout, seatCount = 4) {
   const availableSeats = await page.locator("div.cursor-pointer").all();
   const clickedSeats = [];
   const seatPriceMap = new Map();
-  let selectedAreaName = null;
 
   console.log(
     `\n=== SEAT SELECTION: Selecting ${seatCount} seats from SAME area ===`
   );
 
-  for (let i = 0; i < seatCount && availableSeats.length > 0; i++) {
-    let seatFound = false;
-    let attempts = 0;
-    const maxAttempts = availableSeats.length;
+  if (availableSeats.length === 0) {
+    throw new Error("No available seats found");
+  }
 
-    while (!seatFound && attempts < maxAttempts) {
-      const randomIndex = Math.floor(Math.random() * availableSeats.length);
-      const seatLocator = availableSeats[randomIndex];
+  // 1. Pick a random first seat to establish the area
+  const randomIndex = Math.floor(Math.random() * availableSeats.length);
+  const seatLocator = availableSeats[randomIndex];
 
-      const seatNumber = await seatLocator.locator("span").innerText();
-      const rowLocator = seatLocator.locator(
-        'xpath=ancestor::div[contains(@class,"flex")][1]/preceding-sibling::div[contains(@class,"sticky")][1]/span'
-      );
-      const rowName = await rowLocator.first().innerText();
-      const fullSeatName = `${rowName}${seatNumber}`;
+  const seatNumber = await seatLocator.locator("span").innerText();
+  const rowLocator = seatLocator.locator(
+    'xpath=ancestor::div[contains(@class,"flex")][1]/preceding-sibling::div[contains(@class,"sticky")][1]/span'
+  );
+  const rowName = await rowLocator.first().innerText();
+  const fullSeatName = `${rowName}${seatNumber}`;
 
-      let seatPrice = null;
-      let seatAreaName = null;
-      let seatAreaCategoryCode = null;
-
-      // Find the area this seat belongs to
-      for (const area of layout.areas) {
-        const rowData = area.row.find((r) => r.name === rowName);
-        if (rowData) {
-          seatPrice = area.priceInCents / 100;
-          seatAreaName = area.name;
-
-          // Extract areaCategoryCode from area
-          seatAreaCategoryCode =
-            area.areaCategoryCode ||
-            area.AreaCategoryCode ||
-            area.categoryCode ||
-            area.CategoryCode;
-
-          // On first seat selection, remember the area
-          if (selectedAreaName === null) {
-            selectedAreaName = seatAreaName;
-            console.log(
-              `\n✓ First seat selected from area: "${selectedAreaName}"`
-            );
-          }
-
-          // Only select seats from the same area (ignore category code)
-          if (seatAreaName === selectedAreaName) {
-            seatPriceMap.set(fullSeatName, {
-              price: seatPrice,
-              areaName: seatAreaName,
-              areaCategoryCode: seatAreaCategoryCode,
-              ticketDescription: area.ticketDescription,
-            });
-
-            await seatLocator.scrollIntoViewIfNeeded();
-            await seatLocator.click();
-            clickedSeats.push(fullSeatName);
-            availableSeats.splice(randomIndex, 1);
-            seatFound = true;
-            console.log(
-              `✓ Seat ${
-                i + 1
-              }/${seatCount}: Selected "${fullSeatName}" from area "${seatAreaName}"`
-            );
-          } else {
-            console.log(
-              `⚠ Seat "${fullSeatName}" is from area "${seatAreaName}", but we need "${selectedAreaName}". Skipping...`
-            );
-            attempts++;
-          }
-          break;
-        }
-      }
-
-      if (!seatFound) {
-        attempts++;
-      }
-    }
-
-    if (!seatFound && i < seatCount) {
-      console.warn(
-        `\n⚠️ Could not find seat ${
-          i + 1
-        } from area "${selectedAreaName}". Found ${
-          clickedSeats.length
-        }/${seatCount} seats instead.`
-      );
+  // Find the area this seat belongs to
+  let selectedArea = null;
+  for (const area of layout.areas) {
+    if (area.row.some((r) => r.name === rowName)) {
+      selectedArea = area;
       break;
     }
+  }
+
+  if (!selectedArea) {
+    throw new Error(`Could not find area for row ${rowName}`);
+  }
+
+  const selectedAreaName = selectedArea.name;
+  console.log(`\n✓ First seat selected: "${fullSeatName}" from area: "${selectedAreaName}"`);
+
+  // Click the first seat
+  await seatLocator.scrollIntoViewIfNeeded();
+  await seatLocator.click();
+  clickedSeats.push(fullSeatName);
+
+  const seatAreaCategoryCode =
+    selectedArea.areaCategoryCode ||
+    selectedArea.AreaCategoryCode ||
+    selectedArea.categoryCode ||
+    selectedArea.CategoryCode;
+
+  seatPriceMap.set(fullSeatName, {
+    price: selectedArea.priceInCents / 100,
+    areaName: selectedAreaName,
+    areaCategoryCode: seatAreaCategoryCode,
+    ticketDescription: selectedArea.ticketDescription,
+  });
+
+  // 2. Select remaining seats only from rows belonging to the same area
+  const clickedSeatsSet = new Set(clickedSeats);
+  const areaRows = selectedArea.row.map((r) => r.name);
+
+  for (const rName of areaRows) {
+    if (clickedSeats.length >= seatCount) break;
+
+    // Fast count of available seats in this specific row
+    const rowSeatsLocator = page.locator(
+      `xpath=//div[contains(@class,"sticky")][./span[text()="${rName}"]]/following-sibling::div[contains(@class,"flex")][1]//div[contains(@class,"cursor-pointer")]`
+    );
+    const count = await rowSeatsLocator.count();
+
+    for (let idx = 0; idx < count; idx++) {
+      if (clickedSeats.length >= seatCount) break;
+
+      const siblingSeat = rowSeatsLocator.nth(idx);
+      const siblingSeatNumber = await siblingSeat.locator("span").innerText();
+      const siblingFullSeatName = `${rName}${siblingSeatNumber}`;
+
+      if (!clickedSeatsSet.has(siblingFullSeatName)) {
+        await siblingSeat.scrollIntoViewIfNeeded();
+        await siblingSeat.click();
+
+        clickedSeats.push(siblingFullSeatName);
+        clickedSeatsSet.add(siblingFullSeatName);
+
+        seatPriceMap.set(siblingFullSeatName, {
+          price: selectedArea.priceInCents / 100,
+          areaName: selectedAreaName,
+          areaCategoryCode: seatAreaCategoryCode,
+          ticketDescription: selectedArea.ticketDescription,
+        });
+
+        console.log(
+          `✓ Seat ${clickedSeats.length}/${seatCount}: Selected "${siblingFullSeatName}" from area "${selectedAreaName}"`
+        );
+      }
+    }
+  }
+
+  if (clickedSeats.length < seatCount) {
+    console.warn(
+      `\n⚠️ Could not find enough seats in area "${selectedAreaName}". Found ${clickedSeats.length}/${seatCount} seats.`
+    );
   }
 
   console.log(`\n✅ SEAT SELECTION COMPLETE`);
