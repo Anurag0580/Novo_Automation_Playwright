@@ -12,3 +12,6 @@ bank-offers-negative-tests.spec.js
 
 # Env files
 .env
+
+#static files
+webcontents.txt
