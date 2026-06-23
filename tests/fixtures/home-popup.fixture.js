@@ -70,7 +70,28 @@ export const test = base.extend({
   await use();
 
   console.log("\n==================================================");
-  console.log(`✅ ${tcId} COMPLETED`);
+
+  const actual = testInfo.status;
+  const expected = testInfo.expectedStatus;
+
+  if (actual === expected) {
+    if (actual === 'passed') {
+      console.log(`✅ ${tcId} PASSED`);
+    } else if (actual === 'failed') {
+      console.log(`❌ ${tcId} FAILED`);
+    } else if (actual === 'timedOut') {
+      console.log(`⏰ ${tcId} TIMED OUT`);
+    } else if (actual === 'skipped') {
+      console.log(`⏭️ ${tcId} SKIPPED`);
+    } else {
+      console.log(`⚠️ ${tcId} STATUS: ${actual}`);
+    }
+  } else {
+    console.log(
+      `⚠️ ${tcId} Expected: ${expected ? expected.toUpperCase() : 'UNKNOWN'}, Actual: ${actual ? actual.toUpperCase() : 'UNKNOWN'}`
+    );
+  }
+
   console.log(`📝 ${testInfo.title}`);
   console.log("==================================================\n");
 }, { auto: true }],
