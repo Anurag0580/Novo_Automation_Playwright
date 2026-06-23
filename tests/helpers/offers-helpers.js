@@ -908,109 +908,77 @@ export async function verifyLoyaltyPaymentDetails(
   loyaltyOfferApplied,
   loyaltyDiscountAmount,
   bookingFeeValue,
-  totalWithBookingFee
+  totalWithBookingFee,
+  seatCount = 4
 ) {
-  // Verify ticket subtotal
-  const ticketSubtotalText = `+ QAR ${totalExpectedPrice.toFixed(2)}`;
+  // 1. Calculate dynamically recalculated booking fee and final total
+  // Booking fee is waived on the free loyalty ticket (e.g., 3 paid tickets instead of 4).
+  let actualBookingFeeValue = bookingFeeValue;
+  if (loyaltyOfferApplied && loyaltyDiscountAmount > 0) {
+    const bookingFeePerTicket = bookingFeeValue / seatCount;
+    actualBookingFeeValue = bookingFeeValue - bookingFeePerTicket;
+  }
+  const actualTotalWithBookingFee = (totalExpectedPrice - loyaltyDiscountAmount) + actualBookingFeeValue;
+
+  console.log("=== Verifying Loyalty Payment Details ===");
+  console.log({
+    originalTicketPrice: totalExpectedPrice,
+    loyaltyDiscountAmount,
+    baseBookingFee: bookingFeeValue,
+    actualBookingFeeValue,
+    expectedTotal: actualTotalWithBookingFee
+  });
+
+  const sidePanel = page.locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]").first();
+
+  // Verify ticket subtotal (e.g., + QAR 180 or + QAR 180.00)
   try {
     await expect(page.getByText("Ticket").first()).toBeVisible({
       timeout: 5000,
     });
-    await expect(page.getByText(ticketSubtotalText).first()).toBeVisible({
-      timeout: 5000,
-    });
-    console.log(`✓ Verified ticket subtotal: ${ticketSubtotalText}`);
-  } catch {
-    console.warn(`Could not verify ticket subtotal: ${ticketSubtotalText}`);
+    const ticketRegex = new RegExp(`\\+\\s*QAR\\s*${totalExpectedPrice}(?:\\.0+)?`);
+    await expect(page.locator("body")).toContainText(ticketRegex, { timeout: 5000 });
+    console.log(`✓ Verified ticket subtotal: QAR ${totalExpectedPrice}`);
+  } catch (e) {
+    console.warn(`Could not verify ticket subtotal: QAR ${totalExpectedPrice}`, e.message);
   }
 
-  // Verify loyalty discount
+  // Verify loyalty discount (e.g., - QAR 45 or - QAR 45.00)
   if (loyaltyOfferApplied && loyaltyDiscountAmount > 0) {
     try {
       await expect(page.getByText("Loyalty Discount").first()).toBeVisible({
         timeout: 5000,
       });
-      const discountText = `- QAR ${loyaltyDiscountAmount.toFixed(2)}`;
-      try {
-        await expect(page.getByText(discountText).first()).toBeVisible({
-          timeout: 5000,
-        });
-        console.log(`✓ Verified loyalty discount: ${discountText}`);
-      } catch {
-        const discountRegex = new RegExp(
-          `-\\s*QAR\\s*${loyaltyDiscountAmount.toFixed(2).replace(".", "\\.")}`
-        );
-        await expect(page.locator("body")).toContainText(discountRegex, {
-          timeout: 5000,
-        });
-        console.log(`✓ Verified loyalty discount (regex)`);
-      }
+      const discountRegex = new RegExp(`-\\s*QAR\\s*${loyaltyDiscountAmount}(?:\\.0+)?`);
+      await expect(page.locator("body")).toContainText(discountRegex, { timeout: 5000 });
+      console.log(`✓ Verified loyalty discount: QAR ${loyaltyDiscountAmount}`);
     } catch (error) {
-      console.warn(
-        "Loyalty Discount section not found in side panel:",
-        error.message
-      );
+      console.warn("Loyalty Discount section not found or mismatched:", error.message);
+      throw error;
     }
   }
 
-  // Verify booking fee
+  // Verify booking fee (e.g., + QAR 7.5 or + QAR 7.50)
   try {
     await expect(page.getByText("Booking Fee").first()).toBeVisible({
       timeout: 5000,
     });
-    const bookingFeeAmount = `+ QAR ${bookingFeeValue.toFixed(2)}`;
-    try {
-      await expect(page.getByText(bookingFeeAmount).first()).toBeVisible({
-        timeout: 2000,
-      });
-      console.log(`✓ Verified booking fee: ${bookingFeeAmount}`);
-    } catch {
-      const feeRegex = new RegExp(`\\+\\s*QAR\\s*${bookingFeeValue}(?:\\.0+)?`);
-      await expect(page.locator("body")).toContainText(feeRegex, {
-        timeout: 5000,
-      });
-      console.log(`✓ Verified booking fee (regex)`);
-    }
+    const feeRegex = new RegExp(`\\+\\s*QAR\\s*${actualBookingFeeValue.toString().replace(".", "\\.")}(?:0)?`);
+    await expect(page.locator("body")).toContainText(feeRegex, { timeout: 5000 });
+    console.log(`✓ Verified booking fee: QAR ${actualBookingFeeValue}`);
   } catch (error) {
     console.warn("Could not verify booking fee:", error.message);
+    throw error;
   }
 
-  // Verify total price
+  // Verify total price (e.g., QAR 142.50 or QAR 142.5)
   try {
-    await expect(
-      page.getByText(
-        new RegExp(
-          `Total Price.*QAR.*${totalWithBookingFee
-            .toFixed(2)
-            .replace(".", "\\.")}`
-        )
-      )
-    ).toBeVisible({ timeout: 5000 });
-    console.log(
-      `✓ Verified total price: QAR ${totalWithBookingFee.toFixed(2)}`
-    );
-  } catch {
-    const totalPriceAlternatives = [
-      `Total Price QAR ${totalWithBookingFee.toFixed(2)}`,
-      totalWithBookingFee % 1 === 0
-        ? `Total Price QAR ${Math.floor(totalWithBookingFee)}`
-        : null,
-      `QAR ${totalWithBookingFee.toFixed(2)}`,
-    ].filter(Boolean);
-
-    for (const totalText of totalPriceAlternatives) {
-      try {
-        await expect(page.locator("body")).toContainText(totalText, {
-          timeout: 5000,
-        });
-        console.log(
-          `✓ Verified total price (alternative format): ${totalText}`
-        );
-        break;
-      } catch {
-        continue;
-      }
-    }
+    const totalRegex = new RegExp(`QAR\\s*${actualTotalWithBookingFee.toFixed(2).replace(".", "\\.")}|QAR\\s*${actualTotalWithBookingFee.toString().replace(".", "\\.")}(?:0)?`);
+    await expect(page.locator("body")).toContainText(totalRegex, { timeout: 5000 });
+    console.log(`✓ Verified total price: QAR ${actualTotalWithBookingFee}`);
+  } catch (error) {
+    console.warn(`Could not verify total price: QAR ${actualTotalWithBookingFee}`, error.message);
+    throw error;
   }
 }
 
