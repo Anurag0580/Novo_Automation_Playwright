@@ -18,7 +18,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,      //retries for flaky tests, 2 retries in CI, 0 retries locally
   workers: process.env.CI ? 1 : undefined, // Use 1 worker in CI for better stability, otherwise use default
 
-  reporter: [
+ reporter: [
   ['list'],
   ['html', { open: 'never' }],
   ['json', { outputFile: 'playwright-report/results.json' }],

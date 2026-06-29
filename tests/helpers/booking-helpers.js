@@ -12,6 +12,12 @@ const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 
 const LOGIN_EMAIL = process.env.LOGIN_EMAIL;
 const LOGIN_PASSWORD = process.env.LOGIN_PASSWORD;
+const SPORTS_GENRE = "sports";
+
+const hasSportsGenre = (movie) =>
+  movie.movie_genre?.some(
+    (genre) => genre.genre_name?.trim().toLowerCase() === SPORTS_GENRE
+  ) ?? false;
 
 if (!LOGIN_EMAIL || !LOGIN_PASSWORD) {
   throw new Error("❌ LOGIN_EMAIL or LOGIN_PASSWORD missing in env");
@@ -33,6 +39,7 @@ export async function fetchMoviesFromAPI(request) {
         movie_title: m.movie_title,
         movie_id: m.movie_id,
         movie_slug: m.movie_slug,
+        movie_genre: m.movie_genre,
       })) || []
     );
   } catch (e) {
@@ -46,6 +53,8 @@ export async function selectMovieDynamically(page, request) {
 
   let selectedMovie = null;
   for (const m of apiMovies) {
+    if (hasSportsGenre(m)) continue;
+
     const title = m.movie_title;
     if (!title?.trim()) continue;
     const card = page.getByRole("link").filter({ hasText: title }).first();
@@ -61,10 +70,7 @@ export async function selectMovieDynamically(page, request) {
   }
 
   if (!selectedMovie) {
-    const anyCard = page.locator('[href*="/movies/"]').first();
-    await anyCard.waitFor({ state: "visible", timeout: 8000 });
-    await anyCard.scrollIntoViewIfNeeded();
-    await anyCard.click();
+    throw new Error("No non-sports movie from API is visible on the homepage");
   }
   return selectedMovie;
 }
@@ -464,9 +470,7 @@ export async function loginAndCaptureTokenBooking(page) {
   await page.getByRole("button", { name: "Sign In" }).click();
 
   // Booking-only overlay
-  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-  //   timeout: 15000,
-  // });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
   await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 
   // Wait until token is captured
@@ -595,9 +599,7 @@ export async function login(page, email, password) {
     .getByRole("textbox", { name: "Enter your password" })
     .fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
-  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible({
-  //   timeout: 15000,
-  // });
+  // await expect(page.locator(".dark\\:bg-black\\/10.bg-white")).toBeVisible();
   await expect(page.locator('.flex-1.overflow-y-auto')).toBeVisible();
 }
 
@@ -770,98 +772,105 @@ export async function selectSeatsWithAreaCategory(page, layout, seatCount = 4) {
   const availableSeats = await page.locator("div.cursor-pointer").all();
   const clickedSeats = [];
   const seatPriceMap = new Map();
-  let selectedAreaName = null;
 
   console.log(
     `\n=== SEAT SELECTION: Selecting ${seatCount} seats from SAME area ===`
   );
 
-  for (let i = 0; i < seatCount && availableSeats.length > 0; i++) {
-    let seatFound = false;
-    let attempts = 0;
-    const maxAttempts = availableSeats.length;
+  if (availableSeats.length === 0) {
+    throw new Error("No available seats found");
+  }
 
-    while (!seatFound && attempts < maxAttempts) {
-      const randomIndex = Math.floor(Math.random() * availableSeats.length);
-      const seatLocator = availableSeats[randomIndex];
+  // 1. Pick a random first seat to establish the area
+  const randomIndex = Math.floor(Math.random() * availableSeats.length);
+  const seatLocator = availableSeats[randomIndex];
 
-      const seatNumber = await seatLocator.locator("span").innerText();
-      const rowLocator = seatLocator.locator(
-        'xpath=ancestor::div[contains(@class,"flex")][1]/preceding-sibling::div[contains(@class,"sticky")][1]/span'
-      );
-      const rowName = await rowLocator.first().innerText();
-      const fullSeatName = `${rowName}${seatNumber}`;
+  const seatNumber = await seatLocator.locator("span").innerText();
+  const rowLocator = seatLocator.locator(
+    'xpath=ancestor::div[contains(@class,"flex")][1]/preceding-sibling::div[contains(@class,"sticky")][1]/span'
+  );
+  const rowName = await rowLocator.first().innerText();
+  const fullSeatName = `${rowName}${seatNumber}`;
 
-      let seatPrice = null;
-      let seatAreaName = null;
-      let seatAreaCategoryCode = null;
-
-      // Find the area this seat belongs to
-      for (const area of layout.areas) {
-        const rowData = area.row.find((r) => r.name === rowName);
-        if (rowData) {
-          seatPrice = area.priceInCents / 100;
-          seatAreaName = area.name;
-
-          // Extract areaCategoryCode from area
-          seatAreaCategoryCode =
-            area.areaCategoryCode ||
-            area.AreaCategoryCode ||
-            area.categoryCode ||
-            area.CategoryCode;
-
-          // On first seat selection, remember the area
-          if (selectedAreaName === null) {
-            selectedAreaName = seatAreaName;
-            console.log(
-              `\n✓ First seat selected from area: "${selectedAreaName}"`
-            );
-          }
-
-          // Only select seats from the same area (ignore category code)
-          if (seatAreaName === selectedAreaName) {
-            seatPriceMap.set(fullSeatName, {
-              price: seatPrice,
-              areaName: seatAreaName,
-              areaCategoryCode: seatAreaCategoryCode,
-              ticketDescription: area.ticketDescription,
-            });
-
-            await seatLocator.scrollIntoViewIfNeeded();
-            await seatLocator.click();
-            clickedSeats.push(fullSeatName);
-            availableSeats.splice(randomIndex, 1);
-            seatFound = true;
-            console.log(
-              `✓ Seat ${
-                i + 1
-              }/${seatCount}: Selected "${fullSeatName}" from area "${seatAreaName}"`
-            );
-          } else {
-            console.log(
-              `⚠ Seat "${fullSeatName}" is from area "${seatAreaName}", but we need "${selectedAreaName}". Skipping...`
-            );
-            attempts++;
-          }
-          break;
-        }
-      }
-
-      if (!seatFound) {
-        attempts++;
-      }
-    }
-
-    if (!seatFound && i < seatCount) {
-      console.warn(
-        `\n⚠️ Could not find seat ${
-          i + 1
-        } from area "${selectedAreaName}". Found ${
-          clickedSeats.length
-        }/${seatCount} seats instead.`
-      );
+  // Find the area this seat belongs to
+  let selectedArea = null;
+  for (const area of layout.areas) {
+    if (area.row.some((r) => r.name === rowName)) {
+      selectedArea = area;
       break;
     }
+  }
+
+  if (!selectedArea) {
+    throw new Error(`Could not find area for row ${rowName}`);
+  }
+
+  const selectedAreaName = selectedArea.name;
+  console.log(`\n✓ First seat selected: "${fullSeatName}" from area: "${selectedAreaName}"`);
+
+  // Click the first seat
+  await seatLocator.scrollIntoViewIfNeeded();
+  await seatLocator.click();
+  clickedSeats.push(fullSeatName);
+
+  const seatAreaCategoryCode =
+    selectedArea.areaCategoryCode ||
+    selectedArea.AreaCategoryCode ||
+    selectedArea.categoryCode ||
+    selectedArea.CategoryCode;
+
+  seatPriceMap.set(fullSeatName, {
+    price: selectedArea.priceInCents / 100,
+    areaName: selectedAreaName,
+    areaCategoryCode: seatAreaCategoryCode,
+    ticketDescription: selectedArea.ticketDescription,
+  });
+
+  // 2. Select remaining seats only from rows belonging to the same area
+  const clickedSeatsSet = new Set(clickedSeats);
+  const areaRows = selectedArea.row.map((r) => r.name);
+
+  for (const rName of areaRows) {
+    if (clickedSeats.length >= seatCount) break;
+
+    // Fast count of available seats in this specific row
+    const rowSeatsLocator = page.locator(
+      `xpath=//div[contains(@class,"sticky")][./span[text()="${rName}"]]/following-sibling::div[contains(@class,"flex")][1]//div[contains(@class,"cursor-pointer")]`
+    );
+    const count = await rowSeatsLocator.count();
+
+    for (let idx = 0; idx < count; idx++) {
+      if (clickedSeats.length >= seatCount) break;
+
+      const siblingSeat = rowSeatsLocator.nth(idx);
+      const siblingSeatNumber = await siblingSeat.locator("span").innerText();
+      const siblingFullSeatName = `${rName}${siblingSeatNumber}`;
+
+      if (!clickedSeatsSet.has(siblingFullSeatName)) {
+        await siblingSeat.scrollIntoViewIfNeeded();
+        await siblingSeat.click();
+
+        clickedSeats.push(siblingFullSeatName);
+        clickedSeatsSet.add(siblingFullSeatName);
+
+        seatPriceMap.set(siblingFullSeatName, {
+          price: selectedArea.priceInCents / 100,
+          areaName: selectedAreaName,
+          areaCategoryCode: seatAreaCategoryCode,
+          ticketDescription: selectedArea.ticketDescription,
+        });
+
+        console.log(
+          `✓ Seat ${clickedSeats.length}/${seatCount}: Selected "${siblingFullSeatName}" from area "${selectedAreaName}"`
+        );
+      }
+    }
+  }
+
+  if (clickedSeats.length < seatCount) {
+    console.warn(
+      `\n⚠️ Could not find enough seats in area "${selectedAreaName}". Found ${clickedSeats.length}/${seatCount} seats.`
+    );
   }
 
   console.log(`\n✅ SEAT SELECTION COMPLETE`);
@@ -1872,35 +1881,10 @@ export async function setupTest(page, request) {
   // Set a reasonable default timeout for page operations
   // page.setDefaultTimeout(120000); // 2 minutes
 
-   await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
-  // Select movie
-  const apiMovies = await fetchMoviesFromAPI(request);
-  if (!apiMovies.length) throw new Error("No movies returned from API");
+  await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
+  await page.waitForURL(/novocinemas\.com\/home/);
 
-  let selectedMovie = null;
-  for (const m of apiMovies) {
-    const title = m.movie_title;
-    if (!title?.trim()) continue;
-
-    const card = page.getByRole("link").filter({ hasText: title }).first();
-    try {
-      await card.waitFor({ state: "visible", timeout: 4000 });
-      await card.scrollIntoViewIfNeeded();
-      await card.click();
-      selectedMovie = m;
-      break;
-    } catch {
-      continue;
-    }
-  }
-
-  if (!selectedMovie) {
-    const anyCard = page.locator('[href*="/movies/"]').first();
-    await anyCard.waitFor({ state: "visible", timeout: 8000 });
-    await anyCard.scrollIntoViewIfNeeded();
-    await anyCard.click();
-  }
+  const selectedMovie = await selectMovieDynamically(page, request);
 
   // Get movie details
   let movieId = selectedMovie?.movie_id;

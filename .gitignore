@@ -7,9 +7,6 @@ node_modules/
 /playwright/.cache/
 
 
-# files
-bank-offers-negative-tests.spec.js
-
 # Env files
 .env
 

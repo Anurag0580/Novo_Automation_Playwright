@@ -112,6 +112,7 @@ test.describe("Games Booking Flow – UI, Pricing and Checkout API Validation", 
   }
 
   test.beforeEach(async ({ page, request }) => {
+    // Fetch API data before navigating
     const getGamesApi = await request.get(
       `${BACKEND_URL}/api/booking/get-games?country_id=${COUNTRY_ID}&channel=web`,
     );
@@ -234,7 +235,8 @@ test("TC_GAMES_03 – Validate Bowling End-to-End Booking with API Data Verifica
   }
 
   const bowlingCard = page.locator("div").filter({
-    has: page.getByRole("heading", { name: game.name })
+    // has: page.getByRole("heading", { name: game.name })
+    has: page.locator('div').filter({ hasText: /^Bowling$/ }).locator('span')
   }).first();
 
   const baseQtyContainer = bowlingCard.locator("div").filter({
@@ -438,7 +440,9 @@ test("TC_GAMES_04 – Validate Bowling Second Cinema Booking Without Optional It
   await expect(page.getByText(`${CURRENCY} ${selectedBasePrice}`)).toBeVisible();
 
   const bowlingCard = page.locator("div:visible").filter({
-    has: page.getByRole("heading", { name: game.name }),
+    // has: page.getByRole("heading", { name: game.name }),
+    has: page.locator('div').filter({ hasText: /^Bowling$/ }).locator('span')
+
   }).first();
 
   let baseQtyContainer = bowlingCard.locator("div:visible").filter({
@@ -533,7 +537,8 @@ test("TC_GAMES_05 – Validate Billiard End-to-End Booking with Duration Update,
   await expect(page.getByText(`${CURRENCY} ${basePrice}`)).toBeVisible();
 
   const billiardCard = page.locator("div").filter({
-    has: page.getByRole("heading", { name: game.name }),
+    // has: page.getByRole("heading", { name: game.name }),
+    has: page.locator('div').filter({ hasText: /^Billiard$/ }).locator('span')
   }).first();
 
   const baseQtyContainer = billiardCard.locator("div").filter({
@@ -668,7 +673,8 @@ test("TC_GAMES_06 – Validate Billiard Direct Checkout with Base Pricing (No F&
   await expect(page.getByText(`${CURRENCY} ${selectedPrice}`)).toBeVisible();
 
   const billiardCard = page.locator("div:visible").filter({
-    has: page.getByRole("heading", { name: game.name }),
+    // has: page.getByRole("heading", { name: game.name }),
+    has: page.locator('div').filter({ hasText: /^Billiard$/ }).locator('span')
   }).first();
 
   let baseQtyContainer = billiardCard.locator("div:visible").filter({

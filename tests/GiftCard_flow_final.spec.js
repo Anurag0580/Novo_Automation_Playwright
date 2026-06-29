@@ -37,7 +37,7 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     await loginAndCaptureToken(page);
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/buygiftcard`);
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("textbox", { name: "Name" })).toBeVisible();
 
     await page.getByRole("textbox", { name: "Name" }).fill(testData.name);
     await page
@@ -92,7 +92,9 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     const { userDetails } = await loginAndCaptureToken(page);
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/buygiftcard`);
-    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByRole("button", { name: "For Me" })
+    ).toBeVisible();
 
     if (!userDetails) {
       throw new Error(
@@ -108,6 +110,7 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
 
     await page.getByRole("button", { name: "For Me" }).click();
 
+    // Verify pre-filled fields
     const emailInput = page.getByRole("textbox", { name: "Email Address" });
     const phoneInput = page.getByRole("textbox", { name: "Phone Number" });
 
@@ -171,7 +174,9 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     }
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/topUpCard`);
-    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByRole("textbox", { name: "Enter your gift Card Number" })
+    ).toBeVisible();
 
     await page
       .getByRole("textbox", { name: "Enter your gift Card Number" })
@@ -223,7 +228,9 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     await loginAndCaptureToken(page);
 
     await expect(page).toHaveURL(`${BASE_URL}/giftCardFlow/checkBalance`);
-    await page.waitForLoadState("networkidle");
+    await expect(
+      page.getByRole("textbox", { name: "Enter your gift Card Number" })
+    ).toBeVisible();
 
     await page
       .getByRole("textbox", { name: "Enter your gift Card Number" })
@@ -246,8 +253,6 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     const displayedAmount = Math.floor(responseData.data.balance_amount / 100);
     const expectedDate = formatPurchaseDate(responseData.data.purchased_at);
 
-    await page.waitForLoadState("networkidle");
-
     await expect(page.getByText("Balance :")).toBeVisible();
     const balanceRegex = new RegExp(
       `${CURRENCY}\\s*${displayedAmount}|${displayedAmount}\\s*${CURRENCY}`,
@@ -266,7 +271,7 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
       .getByRole("textbox", { name: "Enter your gift Card Number" })
       .fill(TEST_CARD_NUMBER);
     await page.getByRole("button", { name: "Check balance now" }).click();
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByText("Balance :")).toBeVisible();
 
     if (COUNTRY_ID === 2) {
       await expect(
