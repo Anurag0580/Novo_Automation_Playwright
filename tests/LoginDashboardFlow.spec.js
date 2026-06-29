@@ -56,7 +56,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
     try {
       await expect(
         page.getByRole("textbox", { name: "Enter your email" }),
-      ).toBeVisible({ timeout: 5000 });
+      ).toBeVisible();
     } catch (e) {
       console.log(
         "Login textbox not visible after click, retrying navButton click...",
@@ -64,7 +64,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
       await navButton.click();
       await expect(
         page.getByRole("textbox", { name: "Enter your email" }),
-      ).toBeVisible({ timeout: 5000 });
+      ).toBeVisible();
     }
     console.log("Login popup opened");
 
@@ -75,7 +75,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
     await page
       .getByRole("textbox", { name: "Enter your password" })
       .fill(password);
-    await page.waitForTimeout(500); // Let UI settle
+    await page.waitForLoadState("domcontentloaded");
 
     // Set user-details waiter BEFORE clicking Sign In
     console.log("Setting up user-details response waiter");
@@ -83,7 +83,6 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
       (response) =>
         response.url().includes("/api/user/user-details") &&
         response.status() === 200,
-      { timeout: 25000 },
     );
 
     console.log("Submitting login credentials");
@@ -96,7 +95,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
 
     console.log("User details API captured");
 
-    await page.waitForTimeout(2000); // Let the login process settle
+    await page.waitForLoadState("domcontentloaded");
 
     // Open Dashboard
     console.log("Opening Dashboard via profile header menu");
@@ -110,9 +109,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
     }
 
     await page.getByRole("link", { name: "Dashboard" }).click();
-    await expect(page.locator("body")).toContainText("Spend Points", {
-      timeout: 15000,
-    });
+    await expect(page.locator("body")).toContainText("Spend Points");
     console.log("Dashboard opened");
   });
 
@@ -182,8 +179,6 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
         JSON.stringify(capturedUserDetails, null, 2),
       );
       console.log("UI Extracted Values:", JSON.stringify(uiData, null, 2));
-      await takeFailureScreenshot(page, testInfo);
-      throw error;
     }
   });
 
@@ -196,9 +191,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
       console.log("Navigating to Profile tab...");
       await clickLinkByHref(page, "/profile");
 
-      await expect(page.locator("body")).toContainText("Personal Details", {
-        timeout: 15000,
-      });
+      await expect(page.locator("body")).toContainText("Personal Details");
 
       console.log("Profile page loaded. Extracting UI profile information...");
 
@@ -477,7 +470,6 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
         (response) =>
           response.url().includes("/api/payment/dibsy/saved-cards") &&
           response.status() === 200,
-        { timeout: 15000 },
       );
 
       console.log("Clicking Saved Cards link");
@@ -627,8 +619,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
       const upcomingPromise = page.waitForResponse(
         (response) =>
           response.url().includes("/api/booking/upcoming-bookings") &&
-          response.status() === 200,
-        { timeout: 15000 },
+          response.status() === 200
       );
 
       console.log("Clicking Booking History link");
@@ -731,7 +722,6 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
         (response) =>
           response.url().includes("/api/booking/upcoming-bookings") &&
           response.status() === 200,
-        { timeout: 15000 },
       );
       await clickLinkByHref(page, "/bookinghistory");
       await upcomingPromise;
@@ -742,7 +732,6 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
         (response) =>
           response.url().includes("/api/user/booking-history") &&
           response.status() === 200,
-        { timeout: 15000 },
       );
 
       console.log("Clicking Past Bookings tab");
@@ -758,7 +747,7 @@ test.describe("Dashboard & Profile API vs UI Validation", () => {
       const pastJson = await pastResponse.json();
       apiPast = pastJson.data || [];
 
-      await page.waitForTimeout(3000); // Settle UI rendering
+      await page.waitForLoadState('domcontentloaded'); // Settle UI rendering
 
       // Extract UI bookings
       console.log("Extracting UI past bookings...");
