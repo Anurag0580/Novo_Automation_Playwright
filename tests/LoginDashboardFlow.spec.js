@@ -15,42 +15,6 @@ function normalizeText(value) {
 }
 
 /**
- * Convert API DOB (e.g. "2002-11-12T00:00:00.000Z") to normalized object
- * containing Day, Month name (full word), and Year.
- */
-function normalizeDOB(apiDob) {
-  if (!apiDob) return { day: "", month: "", year: "" };
-  const d = new Date(apiDob);
-  const day = String(d.getUTCDate());
-  const year = String(d.getUTCFullYear());
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-  const month = monthNames[d.getUTCMonth()];
-  return { day, month, year };
-}
-
-/**
- * Extract last 4 digits from card strings (e.g. "**** 1002" or "VISA •••• 1002").
- */
-function extractLast4Digits(cardStr) {
-  if (!cardStr) return "";
-  const match = cardStr.match(/\d{4}$/);
-  return match ? match[0] : "";
-}
-
-/**
  * Click a link on the page using browser-side click to bypass pointer interception.
  */
 async function clickLinkByHref(page, href) {
@@ -63,16 +27,6 @@ async function clickLinkByHref(page, href) {
       throw new Error(`Link with href="${targetHref}" not found in DOM`);
     }
   }, href);
-}
-
-/**
- * Save failure screenshot to test-results/<test-name>.png
- */
-async function takeFailureScreenshot(page, testInfo) {
-  const sanitizedTitle = testInfo.title.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const screenshotPath = `test-results/${sanitizedTitle}.png`;
-  await page.screenshot({ path: screenshotPath });
-  console.log(`[DIAGNOSTICS] Failure screenshot saved to ${screenshotPath}`);
 }
 
 // ==================== TEST SUITE ====================
