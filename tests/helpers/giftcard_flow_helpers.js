@@ -269,22 +269,10 @@ async function selectGiftCard(page, price, currency = CURRENCY, quantity = 1) {
 
   await expect(page.getByText('Customize your Gift Card')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Price:')).toBeVisible();
-
-  let selectedPrice = String(price);
-  if (price) {
-    await page.getByRole('button', { name: `${currency} ${price}` }).click();
-  } else {
-    const priceInput = page.getByRole('spinbutton').first();
-    await expect(priceInput).toBeVisible();
-    selectedPrice = await priceInput.inputValue();
-  }
-
-  const quantityInput = page.getByRole('spinbutton').nth(1);
-  await expect(quantityInput).toBeVisible();
-  await quantityInput.fill(String(quantity));
+  await page.getByRole('button', { name: `${currency} ${price}` }).click();
 
   return {
-    price: selectedPrice,
+    price: String(price),
     currency,
     quantity,
     actionLocator: page.getByRole('button', { name: 'Next' }).first(),

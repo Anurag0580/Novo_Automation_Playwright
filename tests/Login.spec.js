@@ -90,7 +90,7 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
   }) => {
     test.skip(
       COUNTRY_ID === 2,
-      "WhatsApp phone OTP login flow is not available for UAE."
+      console.log("WhatsApp phone OTP login flow is not available for UAE.")
     );
     test.skip(
       !Phone,

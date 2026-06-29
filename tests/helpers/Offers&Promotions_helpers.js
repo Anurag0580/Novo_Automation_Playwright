@@ -33,6 +33,7 @@ async function fetchOffersData(page) {
  * Parse offers from backend data
  */
 function parseOffers(backendData) {
+  // Handle both possible API structures
   const offersRaw = backendData?.offerGroups?.data?.data ||
     backendData?.offerGroups?.data || [];
 
@@ -65,70 +66,6 @@ function categorizeOffers(offers) {
   };
 }
 
-async function firstVisibleOfferTitle(page, title) {
-  const matches = page.getByText(title, { exact: false });
-  const count = await matches.count();
-
-  for (let index = 0; index < count; index++) {
-    const candidate = matches.nth(index);
-    if (await candidate.isVisible().catch(() => false)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
-async function getOffersCarouselNextButton(page) {
-  const selectors = [
-    // Common slick/carousel next controls
-    '.slick-next',
-    'button[aria-label="Next"]',
-    'button[aria-label="right"]',
-    'button:has(svg[aria-hidden="true"]):has-text("Next")',
-
-    // Some implementations render the button inside the active slide container
-    '.slick-slide.slick-active button:nth-child(3)',
-    '.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)',
-
-    // Generic arrow button fallback (covers icon-only buttons)
-    'button:has(svg):has-text("Next")',
-    'button:has(svg):has([class*="arrow" i])'
-  ];
-
-  for (const selector of selectors) {
-    const button = page.locator(selector).first();
-    if (await button.isVisible().catch(() => false)) {
-      return button;
-    }
-  }
-
-  return null;
-}
-
-
-
-async function revealOfferInCarousel(page, title, maxMoves = 12) {
-  await page.getByText('Popular Bank Offers').scrollIntoViewIfNeeded().catch(() => {});
-
-  for (let move = 0; move <= maxMoves; move++) {
-    const visibleTitle = await firstVisibleOfferTitle(page, title);
-    if (visibleTitle) {
-      return visibleTitle;
-    }
-
-    const nextButton = await getOffersCarouselNextButton(page);
-    if (!nextButton || move === maxMoves) {
-      break;
-    }
-
-    await nextButton.click({ force: true });
-    await page.waitForTimeout(350);
-  }
-
-  return page.getByText(title, { exact: false }).first();
-}
-
 /**
  * Navigate to Offers & Promotions page
  */
@@ -151,6 +88,7 @@ async function navigateToOffers(page) {
 
   await expect(page).toHaveURL(/\/promotions\/?$/);
 
+  // ✅ Correct anchor (listing page)
   await expect(
     page.getByRole('heading', { name: pageName })
   ).toBeVisible({ timeout: 8000 });
@@ -169,12 +107,15 @@ async function verifyOffersInTab(page, offers = [], ...excludeGroups) {
     .filter(offer => offer?.title);
   console.log(`🔍 Verifying ${offers.length} offers are visible`);
 
+  // Verify expected offers are visible
   for (const offer of offers.filter(offer => offer?.title)) {
     console.log(`  Checking EXPECTED offer: ${offer.title}`);
-    const titleLocator = await revealOfferInCarousel(page, offer.title, offers.length + 4);
-    await expect(titleLocator).toBeVisible({ timeout: 10000 });
+    const locator = page.getByText(offer.title, { exact: false }).first();
+    await locator.scrollIntoViewIfNeeded();
+    await expect(locator).toBeVisible();
   }
 
+  // Verify excluded offers are hidden (don't fail on warning, just check)
   for (const offer of excludeOffers) {
     const visible = await page.getByText(offer.title, { exact: false })
       .first()
@@ -194,7 +135,7 @@ async function verifyOffersInTab(page, offers = [], ...excludeGroups) {
  */
 async function switchTab(page, tabButton) {
   await tabButton.click();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(500); // or better: wait for specific content change
 }
 
 /**
@@ -217,8 +158,13 @@ async function verifyLearnMoreNavigation(page, offers) {
 
     await expect(page).toHaveURL(/\/promotions\/\d+/);
 
+    // 🔥 FULL DETAILS VALIDATION
     await verifyOfferDetailsPage(page, offer);
 
+    // Back
+    // await page.goBack();
+    // await page.waitForLoadState('networkidle');
+    // await expect(page).toHaveURL(offersPageUrl);
     await page.goto(offersPageUrl, { waitUntil: 'domcontentloaded' });
   }
 }
@@ -356,8 +302,13 @@ async function verifyOfferDetailsPage(page, offer) {
 
   const apiData = await fetchOfferDetailsById(page, offer.id);
 
+  // ---------- TITLE ----------
+  // await expect(
+  //   page.getByRole('heading', { name: apiData.name })
+  // ).toBeVisible();
   await expect(page.getByText(apiData.name).first()).toBeVisible();
 
+  // ---------- DESCRIPTION ----------
   for (const field of ['short_desc', 'extra_info']) {
     if (!apiData[field]) {
       continue;
@@ -373,6 +324,7 @@ async function verifyOfferDetailsPage(page, offer) {
     );
   }
 
+  // ---------- DATE INFORMATION ----------
   if (apiData.valid_on) {
     await expect(page.getByText('Valid on', { exact: true })).toBeVisible();
     await expect(page.getByText(apiData.valid_on, { exact: true })).toBeVisible();
@@ -391,6 +343,7 @@ async function verifyOfferDetailsPage(page, offer) {
     console.log('✔ Valid till verified (flexible format)');
   }
 
+  // ---------- IMAGES ----------
   if (apiData.banner_image) {
     const bannerImg = page.getByRole('img', {
       name: /Promotion Offer Banner|Promotion Offer/i
@@ -402,6 +355,7 @@ async function verifyOfferDetailsPage(page, offer) {
     expect(src).toMatch(/gumlet|novo/i);
   }
 
+  // ---------- PORTRAIT IMAGE ----------
   if (apiData.potrait_image) {
     const fileName = apiData.potrait_image.split('/').pop();
 
@@ -423,6 +377,7 @@ async function verifyOfferDetailsPage(page, offer) {
   }
   console.log('✔ Portrait image loaded');
 
+  // ---------- CTA / REDIRECTION ----------
   await verifyOfferDetailsCta(page, apiData);
 
   console.log(`✅ Offer details verified for: ${apiData.name}`);
@@ -469,8 +424,6 @@ export {
   fetchOffersData,
   parseOffers,
   categorizeOffers,
-  firstVisibleOfferTitle,
-  getOffersCarouselNextButton,
   navigateToOffers,
   verifyOffersInTab,
   switchTab,

@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        LOGIN_EMAIL = credentials('novo-qa-login-email')
-        LOGIN_PASSWORD = credentials('novo-qa-login-password')
+        LOGIN_EMAIL = credentials('novo-uae-login-email')
+        LOGIN_PASSWORD = credentials('novo-uae-login-password')
     }
 
     stages {
@@ -50,18 +50,17 @@ echo VALID_PASSWORD=%VALID_PASSWORD%
                 }
             }
         }
-
         stage('Generate Allure Report') {
-            steps {
-                bat '''
-                if exist allure-results (
-                    npx allure generate allure-results --clean -o allure-report
-                ) else (
-                    echo Allure results not found.
-                )
-                '''
-            }
-        }
+    steps {
+        bat '''
+        if exist allure-results (
+            npx allure generate allure-results --clean -o allure-report
+        ) else (
+            echo Allure results not found.
+        )
+        '''
+    }
+}
     }
 
     post {
@@ -163,7 +162,7 @@ blob-report/**
 
 ========================================================
 
-🚀 Novo Qatar Regression
+🚀 Novo UAE Regression
 
 🟢 Passed      : ${passed}
 🔴 Failed      : ${failed}
@@ -172,9 +171,9 @@ blob-report/**
 
 ⏱ Duration     : ${minutes} min ${seconds} sec
 
-🌐 Environment : Qatar
+🌐 Environment : UAE
 🌍 Browser      : Chromium
-🌿 Branch       : main
+🌿 Branch       : uae-preprod
 🔨 Build        : #${env.BUILD_NUMBER}
 
 📄 HTML Report

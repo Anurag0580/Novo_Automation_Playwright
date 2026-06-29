@@ -7,12 +7,9 @@ import {
   switchTab,
   verifyLearnMoreNavigation,
   verifyHoverDetails,
-  firstVisibleOfferTitle,
-  getOffersCarouselNextButton,
   API_BASE,
   HEADERS,
 } from './helpers/Offers&Promotions_helpers.js';
-
 import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./helpers/envConfig.js";
 
 let backendData;
@@ -116,6 +113,7 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
     
     await expect(page.locator('.bg-background.p-5.lg\\:p-10')).toBeVisible();
     
+    const rightButton = page.locator('.slick-slide.slick-active > div > div > .w-full.flex > button:nth-child(3)');
     const verifiedOffers = new Set();
     const maxSlides = all.length * 2;
     let slideCount = 0;
@@ -141,15 +139,9 @@ test.describe('Offers & Promotions – UI, Backend Data, Tabs, Carousel, and Nav
       }
 
       if (verifiedOffers.size < all.length) {
-        const rightButton = await getOffersCarouselNextButton(page);
-        if (!rightButton) {
-          throw new Error('Carousel next button not found while verifying all offers');
-        }
-
-        await rightButton.click({ force: true });
+        await rightButton.click();
         await page.waitForTimeout(1000); // Wait for transition animation to complete
       }
-
     }
 
     expect(verifiedOffers.size).toBe(all.length);

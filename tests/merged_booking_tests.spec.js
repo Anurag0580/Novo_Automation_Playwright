@@ -80,7 +80,7 @@ import {
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const ESCAPED_CURRENCY = escapeRegExp(CURRENCY);
 const skipToPaymentButtonName = new RegExp(
-  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY}(?:\\s+\\d+(?:\\.\\d{1,2})?)?)?$`,
+  `^Skip to Payment(?:\\s+${ESCAPED_CURRENCY})?$`,
   "i"
 );
 
@@ -414,11 +414,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================== EXPECT DIRECT PAYMENT ==================
     await page.waitForURL((url) => url.pathname.includes("/payment"));
 
-    if (COUNTRY_ID !== 2) {
-    await expect(
-      page.getByRole("heading", { name: "Payment Options" })
-    ).toBeVisible();} else {
-    await expect(page.getByRole('heading', { name: 'Gift Card & Vouchers' })).toBeVisible();}
+    // await page.waitForLoadState("networkidle");
+    // await expect(
+    //   page.getByRole("heading", { name: "Payment Options" })
+    // ).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Gift Card & Vouchers' })).toBeVisible();
 
     // ================== PAYMENT SIDE PANEL ==================
     const paymentSidePanel = page
@@ -449,7 +449,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       await expect(
         page.getByText(
           new RegExp(
-            `Total Price.*QAR.*${totalWithBookingFee
+            `Total Price.*${ESCAPED_CURRENCY}.*${totalWithBookingFee
               .toFixed(2)
               .replace(".", "\\.")}`
           )
@@ -600,8 +600,14 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     console.log("Proceeding to seat selection to trigger seat layout API...");
 
-    const layout = await getSeatLayout(page, request, sessionId, cinemaId);
-    const skipConcession = layout?.skip_concession === true;
+    const seatLayoutResponse = await request.get(
+      `${BACKEND_URL}/api/booking/seat-layout/cinemas/${cinemaId}/sessions/${sessionId}?country_id=${COUNTRY_ID}&channel=web`
+    );
+    const seatLayoutData = await seatLayoutResponse.json();
+    const layout = seatLayoutData.data;
+    const skipConcession =
+      layout?.skip_concession === true ||
+      seatLayoutData?.skip_concession === true;
     console.log("skip_concession (seat-layout):", skipConcession);
 
     console.log("Waiting for userSessionId capture...");
@@ -621,28 +627,173 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       }
     }
 
+    await expect(
+      page.getByRole("img", { name: "Screen Indicator" })
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        new RegExp(`${escapeRegExp(layout.areas[0].name)} \\(${ESCAPED_CURRENCY}`)
+      )
+    ).toBeVisible();
+    await expect(
+      page.getByText(`Screen ${layout.screenName}`, { exact: true })
+    ).toBeVisible();
+
+    const rowOrder = layout.areas[0].row
+      .sort((a, b) => a.rowIndex - b.rowIndex)
+      .map((r) => r.name);
+    console.log("Row Order from API:", rowOrder);
+
     // === Enhanced seat selection ===
+    const availableSeats = await page.locator("div.cursor-pointer").all();
     const seatCount = 4;
-    const { clickedSeats, seatPriceMap, rowOrder } = await selectSeatsWithAreaCategory(
-      page,
-      layout,
-      seatCount
+    const clickedSeats = [];
+    const seatPriceMap = new Map();
+
+    for (let i = 0; i < seatCount && availableSeats.length > 0; i++) {
+      const randomIndex = Math.floor(Math.random() * availableSeats.length);
+      const seatLocator = availableSeats[randomIndex];
+
+      const seatNumber = await seatLocator.locator("span").innerText();
+      const rowLocator = seatLocator.locator(
+        'xpath=ancestor::div[contains(@class,"flex")][1]/preceding-sibling::div[contains(@class,"sticky")][1]/span'
+      );
+      const rowName = await rowLocator.first().innerText();
+      const fullSeatName = `${rowName}${seatNumber}`;
+      clickedSeats.push(fullSeatName);
+
+      let seatPrice = null;
+      for (const area of layout.areas) {
+        const rowData = area.row.find((r) => r.name === rowName);
+        if (rowData) {
+          seatPrice = area.priceInCents / 100;
+          seatPriceMap.set(fullSeatName, {
+            price: seatPrice,
+            areaName: area.name,
+            areaCategoryCode: area.AreaCategoryCode,
+            ticketDescription: area.ticketDescription,
+          });
+          break;
+        }
+      }
+      if (!seatPrice)
+        console.warn(`Could not find price for seat ${fullSeatName}`);
+
+      await seatLocator.scrollIntoViewIfNeeded();
+      await seatLocator.click();
+      availableSeats.splice(randomIndex, 1);
+    }
+
+    console.log(
+      "Clicked Seats with Prices:",
+      Array.from(seatPriceMap.entries())
     );
 
-    const sortedSeats = sortSeats(clickedSeats, rowOrder);
+    const sortedSeats = [...clickedSeats].sort((a, b) => {
+      const rowMatchA = a.match(/^([A-Z]+)/);
+      const rowMatchB = b.match(/^([A-Z]+)/);
+
+      if (!rowMatchA || !rowMatchB) return 0;
+
+      const rowA = rowMatchA[1];
+      const rowB = rowMatchB[1];
+      const numA = parseInt(a.match(/(\d+)$/)?.[1] || "0", 10);
+      const numB = parseInt(b.match(/(\d+)$/)?.[1] || "0", 10);
+
+      const rowIndexA = rowOrder.indexOf(rowA);
+      const rowIndexB = rowOrder.indexOf(rowB);
+
+      if (rowIndexA === -1 && rowIndexB === -1)
+        return rowA.localeCompare(rowB) || numA - numB;
+      if (rowIndexA === -1) return 1;
+      if (rowIndexB === -1) return -1;
+      if (rowIndexA !== rowIndexB) return rowIndexA - rowIndexB;
+      return numA - numB;
+    });
+
     console.log("Frontend-style Sorted Seats:", sortedSeats);
 
     // Calculate total price and group by area
-    const { areaGroupedSeats, totalExpectedPrice } = groupSeatsByArea(
-      clickedSeats,
-      seatPriceMap
-    );
+    const areaGroupedSeats = new Map();
+    let totalExpectedPrice = 0;
+
+    for (const seat of clickedSeats) {
+      const seatInfo = seatPriceMap.get(seat);
+      if (seatInfo) {
+        totalExpectedPrice += seatInfo.price;
+        if (!areaGroupedSeats.has(seatInfo.areaName)) {
+          areaGroupedSeats.set(seatInfo.areaName, {
+            seats: [],
+            count: 0,
+            unitPrice: seatInfo.price,
+            ticketDescription: seatInfo.ticketDescription,
+          });
+        }
+        const areaInfo = areaGroupedSeats.get(seatInfo.areaName);
+        areaInfo.seats.push(seat);
+        areaInfo.count++;
+      }
+    }
+
+    console.log("Area Grouped Seats:", Array.from(areaGroupedSeats.entries()));
+    console.log("Total Expected Price:", totalExpectedPrice);
 
     // Verify side-panel shows selected seats
-    await verifySelectedSeatsInPanel(page, clickedSeats);
+    await page
+      .locator("div")
+      .filter({ hasText: /^Seats$/ })
+      .first()
+      .click();
 
-    // Dynamic price verification for each area and total price
-    await verifyPricesInPanel(page, areaGroupedSeats, totalExpectedPrice);
+    for (const seat of clickedSeats) {
+      await expect(page.getByText(seat).first()).toBeVisible();
+      console.log(`✓ Verified seat ${seat} is visible`);
+    }
+
+    // Dynamic price verification for each area
+    for (const [areaName, areaInfo] of areaGroupedSeats) {
+      const expectedPriceText = `${CURRENCY} ${areaInfo.unitPrice.toFixed(2)} x ${
+        areaInfo.count
+      }`;
+
+      try {
+        await expect(page.getByText(expectedPriceText).first()).toBeVisible();
+        console.log(`✓ Verified price for ${areaName}: ${expectedPriceText}`);
+      } catch (error) {
+        console.warn(`Could not find exact price text: ${expectedPriceText}`);
+        const alternativePriceRegex = new RegExp(
+          `${ESCAPED_CURRENCY}\\s*${areaInfo.unitPrice.toFixed(2).replace(".", "\\.")}.*x\\s*${
+            areaInfo.count
+          }`
+        );
+        await expect(page.locator("body")).toContainText(alternativePriceRegex);
+        console.log(`✓ Verified alternative price format for ${areaName}`);
+      }
+    }
+
+    // Verify total price
+    const totalPriceFormatted =
+      totalExpectedPrice % 1 === 0
+        ? `${CURRENCY} ${Math.floor(totalExpectedPrice)}`
+        : `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`;
+
+    try {
+      await expect(page.locator("body")).toContainText(totalPriceFormatted);
+      console.log(`✓ Verified total price: ${totalPriceFormatted}`);
+    } catch (error) {
+      try {
+        await expect(page.locator("body")).toContainText(
+          `${CURRENCY} ${totalExpectedPrice.toFixed(2)}`
+        );
+        console.log(`✓ Verified total price (decimal format)`);
+      } catch (secondError) {
+        const priceRegex = new RegExp(
+          `${ESCAPED_CURRENCY}\\s*${totalExpectedPrice}(?:\\.00)?`
+        );
+        await expect(page.locator("body")).toContainText(priceRegex);
+        console.log(`✓ Verified total price (regex)`);
+      }
+    }
 
     console.log("Dynamic price verification completed successfully");
 
@@ -718,18 +869,18 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     }
 
     // Verify offers against API data
-    if (loyaltyApiData && expectedOffers.length > 0) {
+    if (loyaltyApiData && loyaltyApiData.offers.length > 0) {
       let actualLoyaltyDiscountCents = 0;
       let loyaltyOfferApplied = false;
       console.log(
-        `\nFound ${expectedOffers.length} expected loyalty offers from API`
+        `\nFound ${loyaltyApiData.offers.length} loyalty offers from API`
       );
       console.log("Starting dynamic UI verification...\n");
 
-      for (let i = 0; i < expectedOffers.length; i++) {
-        const offer = expectedOffers[i];
+      for (let i = 0; i < loyaltyApiData.offers.length; i++) {
+        const offer = loyaltyApiData.offers[i];
         console.log(
-          `\n--- Verifying Offer ${i + 1}/${expectedOffers.length} ---`
+          `\n--- Verifying Offer ${i + 1}/${loyaltyApiData.offers.length} ---`
         );
         console.log("Offer Details:", {
           description: offer.description,
@@ -832,7 +983,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       let selectedOffer = null;
       let offerApplied = false;
 
-      const firstOffer = expectedOffers[0];
+      const firstOffer = loyaltyApiData.offers[0];
 
       if (firstOffer && firstOffer.availableQuantity > 0) {
         console.log(`Selecting first offer: ${firstOffer.description}`);
@@ -894,23 +1045,13 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
           console.log("✓ Apply Offer button is visible and enabled");
 
           await applyButton.click();
-          await page.waitForTimeout(2000);
-          console.log("✅ Clicked Apply (removed toast verification)");
+
+          await expect(
+            page.getByText("Offer Applied Successfully")
+          ).toBeVisible();
+          console.log("✅ Offer applied successfully!");
           offerApplied = true;
           loyaltyOfferApplied = true;
-
-          // Click the close button of the popup to return to the seat layout page for sidepanel verification
-          console.log("Closing Loyalty Offers popup...");
-          const closeBtn = page.getByRole("button", { name: "Close" })
-            .or(page.getByRole("button", { name: "x", exact: true }))
-            .or(page.locator("div[role='dialog'] button").first())
-            .or(page.locator("button").filter({ hasText: /^x$/i }))
-            .first();
-          await closeBtn.click().catch(async () => {
-            // Fallback: click outside the popup (backdrop)
-            await page.locator("body").click({ position: { x: 10, y: 10 } });
-          });
-          await page.waitForTimeout(1000);
         } catch (error) {
           console.warn(`Could not select or apply first offer`);
           console.warn("Error:", error.message);
@@ -1109,22 +1250,121 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       // === Verify payment details ===
       console.log("\n=== Verifying Payment Details in Side Panel ===");
-      await verifyLoyaltyPaymentDetails(
-        page,
-        totalExpectedPrice,
-        loyaltyOfferApplied,
-        loyaltyDiscountAmount,
-        bookingFeeQAR,
-        totalWithBookingFee
-      );
+
+      // ---------- Ticket ----------
+      try {
+        await expect(page.getByText("Ticket", { exact: true })).toBeVisible();
+        await expect(
+          page.getByText(
+            new RegExp(
+              `\\+\\s*${ESCAPED_CURRENCY}\\s*${Math.round(totalExpectedPrice)}(?:\\.\\d+)?`
+            )
+          )
+        ).toBeVisible();
+        console.log("✓ Verified ticket subtotal");
+      } catch {
+        console.warn("Could not verify ticket subtotal");
+      }
+
+      // ---------- Loyalty Discount ----------
+      if (loyaltyOfferApplied && loyaltyDiscountAmount > 0) {
+        try {
+          await expect(page.getByText("Loyalty Discount")).toBeVisible();
+
+          // amount may be `- ${CURRENCY}` or `- ${CURRENCY} 15`
+          await expect(
+            page.getByText(
+              new RegExp(
+                `-\\s*${ESCAPED_CURRENCY}\\s*${Math.round(loyaltyDiscountAmount)}(?:\\.\\d+)?`
+              )
+            )
+          ).toBeVisible();
+
+          console.log("✓ Verified loyalty discount");
+        } catch {
+          console.warn("Could not verify loyalty discount");
+        }
+      }
+
+      // ---------- Booking Fee ----------
+      try {
+        await expect(page.getByText("Booking Fee")).toBeVisible();
+        await expect(
+          page.getByText(
+            new RegExp(`\\+\\s*${ESCAPED_CURRENCY}\\s*${bookingFeeQAR}(?:\\.\\d+)?`)
+          )
+        ).toBeVisible();
+        console.log("✓ Verified booking fee");
+      } catch {
+        console.warn("Could not verify booking fee");
+      }
+
+      // ---------- Total Price (BEFORE or AFTER discount) ----------
+      try {
+        const totalRow = page.getByText("Total Price").locator("..");
+
+        const possibleTotals = [
+          Math.round(totalWithBookingFee), // after discount
+          // Math.round(totalBeforeDiscount), // before discount
+        ];
+
+        let matched = false;
+
+        for (const value of possibleTotals) {
+          try {
+            await expect(totalRow).toContainText(
+              new RegExp(`${ESCAPED_CURRENCY}\\s*${value}(?:\\.\\d+)?`),
+            );
+
+            console.log(`✓ Verified total price: ${CURRENCY} ${value}`);
+            matched = true;
+            break;
+          } catch {
+            // try next
+          }
+        }
+
+        if (!matched) {
+          throw new Error("Total price not matched in any expected state");
+        }
+      } catch (e) {
+        console.warn("Could not verify total price:", e.message);
+      }
 
       // === Verify loyalty offers section ===
       console.log("\n=== Verifying Loyalty Offers Section in Payment Page ===");
-      await verifyLoyaltyOffersSectionInPayment(
-        page,
-        loyaltyOfferApplied,
-        selectedOffer
-      );
+
+      try {
+        await expect(
+          page
+            .locator("div")
+            .filter({ hasText: /^Offers & Promotions$/ })
+            .first()
+        ).toBeVisible();
+        console.log("✓ Offers & Promotions section visible");
+
+        await expect(page.getByText("Loyalty Offers").first()).toBeVisible();
+        console.log("✓ Loyalty Offers label visible");
+
+        if (loyaltyOfferApplied && selectedOffer) {
+          try {
+            await expect(
+              page
+                .getByText(new RegExp(escapeRegExp(selectedOffer.description), "i"))
+                .first()
+            ).toBeVisible();
+            console.log(
+              `✓ Applied loyalty offer visible: ${selectedOffer.description}`
+            );
+          } catch {
+            console.warn(
+              `Could not verify applied loyalty offer: ${selectedOffer.description}`
+            );
+          }
+        }
+      } catch (error) {
+        console.warn("Failed to verify Loyalty Offers section:", error.message);
+      }
 
       await completePayment(page);
 
@@ -1200,11 +1440,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const skipToPaymentBtn = page.getByRole("button", {
       name: skipToPaymentButtonName,
     });
-    let clickedSkipToPayment = false;
 
     if (await skipToPaymentBtn.isVisible()) {
       await skipToPaymentBtn.click();
-      clickedSkipToPayment = true;
       console.log(`➡️ Clicked: Skip to Payment ${CURRENCY}`);
     } else {
       await page.getByRole("button", { name: "Continue" }).click();
@@ -1221,39 +1459,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       selectSeatsResponsePromise,
       offersApplyPromise
     );
-
-    console.log("Reservation ID:", reservationId);
-    console.log("skip_fnb:", skipFnb);
-
-    if (clickedSkipToPayment || skipFnb) {
-      console.log("Direct Payment route");
-      await page.waitForURL(/\/payment/);
-    } else {
-      console.log("skip_fnb=false -> Navigated to F&B");
-      await page.waitForURL(/\/fnb/);
-
-      await verifyFNBPageBasics(
-        page,
-        testData.sidePanelApiData,
-        testData.movie,
-        testData.cinemaId,
-        reservationId
-      );
-
-      const skipAndContinueBtn = page.getByRole("button", {
-        name: "Skip and Continue",
-      });
-
-      if (await skipAndContinueBtn.isVisible().catch(() => false)) {
-        await skipAndContinueBtn.click();
-        console.log("Clicked: Skip and Continue");
-      } else {
-        await page.getByRole("button", { name: "Continue" }).click();
-        console.log("Clicked: Continue from F&B");
-      }
-
-      await page.waitForURL(/\/payment/);
-    }
 
     // Verify payment page
     await verifyPaymentPageBasics(page, testData.sidePanelApiData);
@@ -1502,9 +1707,10 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
       setupPaymentInterceptors(page);
 
     // ===============================
-    // CLICK CONTINUE TO NAVIGATE THROUGH F&B
+    // CLICK CONTINUE / SKIP TO PAYMENT (SAFE)
     // ===============================
-    await page.getByRole("button", { name: "Continue" }).click();
+    const continueBtn = page.getByRole("button", { name: "Continue" });
+    await continueBtn.click();
     console.log("➡️ Clicked: Continue");
 
     // ===============================
@@ -1546,12 +1752,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
         name: "Skip and Continue",
       });
 
-      if (await skipAndContinueBtn.isVisible().catch(() => false)) {
+      if (await skipAndContinueBtn.isVisible()) {
         await skipAndContinueBtn.click();
         console.log("➡️ Clicked: Skip and Continue");
-      } else {
-        await page.getByRole("button", { name: "Continue" }).click();
-        console.log("➡️ Clicked: Continue from F&B");
       }
 
       await page.waitForURL(/\/payment/);

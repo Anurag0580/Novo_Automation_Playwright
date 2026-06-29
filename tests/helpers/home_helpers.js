@@ -120,8 +120,6 @@ export async function fetchMoviesFromAPI(page) {
           movie_id: movie.movie_id,
           movie_slug: movie.movie_slug,
           movie_rating: movie.movie_rating,
-          movie_image_url: movie.movie_image_url,
-          movie_banner_url: movie.movie_banner_url,
           movie_genre:
             movie.movie_genre?.map((g) => g.genre_name || g.genre_name_ar).join(', ') || '',
           interested_count: movie._count?.movies_like || 0,
@@ -157,16 +155,7 @@ export async function testMovieInteraction(page, movie, config, shouldNavigateBa
   await page.waitForLoadState('networkidle');
 
   await expect(page.getByRole('heading', { name: movieTitle })).toBeVisible();
-
-  const movieImageUrl = movie.movie_image_url || movie.image_url || movie.banner_url || "";
-  const isFallback = !movieImageUrl || movieImageUrl.endsWith('null');
-
-  if (isFallback) {
-    console.warn(`⚠️ Warning: Movie "${movieTitle}" has no poster. API URL: "${movieImageUrl}"`);
-    await expect(page.getByRole('img', { name: 'fallback' })).toBeVisible();
-  } else {
-    await expect(page.getByRole('img', { name: 'movie banner', exact: true })).toBeVisible();
-  }
+  await expect(page.getByRole('img', { name: 'movie banner', exact: true })).toBeVisible();
 
   if (shouldNavigateBack) {
     if (config === LANGUAGE_CONFIG.arabic) {
