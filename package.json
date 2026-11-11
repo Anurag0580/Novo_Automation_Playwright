@@ -2,7 +2,11 @@
   "name": "novo_automation_playwright",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+  "setup": "node setup-profile.js",
+  "test": "npx playwright test",
+  "test:headed": "npx playwright test --headed"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
