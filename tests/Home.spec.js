@@ -128,18 +128,14 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     await expect(page.locator('.slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .montserrat_aae9f109-module__l2uvuG__className')).toContainText("Novo Experiences");
 
     // Private Booking
-    if (COUNTRY_ID !== 2) {
-      await page.goto(`${BASE_URL}/home`);
-      const privateBooking = headerLink(page, "Private Booking");
-      await expect(privateBooking).toBeVisible();
-      await privateBooking.click();
-      await expect(page).toHaveURL(/privatebooking/);
-      await expect(
-        page.getByRole("heading", { name: "Private Booking" }),
-      ).toBeVisible();
-    } else {
-      console.log(`⏭️ Skipping Private Booking for country_id=${COUNTRY_ID}`);
-    }
+    await page.goto(`${BASE_URL}/home`);
+    const privateBooking = headerLink(page, "Private Booking");
+    await expect(privateBooking).toBeVisible();
+    await privateBooking.click();
+    await expect(page).toHaveURL(/privatebooking/);
+    await expect(
+      page.getByRole("heading", { name: "Private Booking" }),
+    ).toBeVisible();
 
     // Premiere Club
     await page.goto(`${BASE_URL}/home`);
@@ -1119,14 +1115,8 @@ await test.step("Verify Watch Trailer modal opens and closes", async () => {
     //     .first(),
     // ).toBeVisible();
 
-    // Footer: country-specific heading/text differences
-    if (COUNTRY_ID === 2) {
-      // UAE: heading present
-      await expect(page.getByRole("heading", { name: "Ways To Book" })).toBeVisible();
-    } else {
-      // Default: combined text present
-      await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
-    }
+    // Footer: heading/text differences
+    await expect(page.getByText("Ways To BookTalk with Us ?")).toBeVisible();
 
     // Test mobile app download links
     const appLinks = [
@@ -1150,41 +1140,35 @@ await test.step("Verify Watch Trailer modal opens and closes", async () => {
     }
     console.log("🔗 Social media links validated");
 
-    // Qatar-specific footer links (not available in UAE)
-    if (COUNTRY_ID !== 2) {
-      await expect(
-        page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
-      ).toBeVisible();
-      await expect(
-        page
-          .getByRole("contentinfo")
-          .getByRole("link", { name: "Need Assistance ?" }),
-      ).toBeVisible();
+    // Footer links and contact info
+    await expect(
+      page.getByRole("contentinfo").getByRole("link", { name: "44260777" }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("contentinfo")
+        .getByRole("link", { name: "Need Assistance ?" }),
+    ).toBeVisible();
 
-      // Handle same-tab navigation to contact page
-      await Promise.all([
-        page.waitForURL("**/contact"),
-        page
-          .getByRole("contentinfo")
-          .getByRole("link", { name: "Need Assistance ?" })
-          .click(),
-      ]);
-      await expect(page.url()).toContain("https://qa.novocinemas.com/contact");
-      console.log("✅ Successfully navigated to contact page");
-      
-      // Navigate back to home
-      await page.goBack();
-      await expect(page.url()).toContain(`${BASE_URL}/home`);
-      console.log("✅ Returned to home page");
+    // Handle same-tab navigation to contact page
+    await Promise.all([
+      page.waitForURL("**/contact"),
+      page
+        .getByRole("contentinfo")
+        .getByRole("link", { name: "Need Assistance ?" })
+        .click(),
+    ]);
+    await expect(page.url()).toContain("https://qa.novocinemas.com/contact");
+    console.log("✅ Successfully navigated to contact page");
+    
+    // Navigate back to home
+    await page.goBack();
+    await expect(page.url()).toContain(`${BASE_URL}/home`);
+    console.log("✅ Returned to home page");
 
-      // Qatar-specific contact info
-      await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
-      await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
-    } else {
-      // UAE-specific contact info
-      await expect(page.getByText("Email Uscustomerservice@")).toBeVisible();
-      await expect(page.getByText("Find Us HereCayan Business")).toBeVisible();
-    }
+    // Contact info
+    await expect(page.getByText("Email Uscallcenterqatar@")).toBeVisible();
+    await expect(page.getByText("Find Us HereFloors 3‑5, QDB")).toBeVisible();
 
     await expect(
       page
@@ -1194,47 +1178,24 @@ await test.step("Verify Watch Trailer modal opens and closes", async () => {
     ).toBeVisible();
 
     // Test social media links
-    let socialLinks = [];
-
-    if (COUNTRY_ID !== 2) {
-      socialLinks = [
-        {
-          selector: ".flex.items-center.justify-center.w-8.h-8",
-          expectedUrl: "https://www.facebook.com/novocinemasQTR",
-        },
-        {
-          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
-          expectedUrl: "https://www.youtube.com/@Novocinemas",
-        },
-        {
-          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
-          expectedUrl: "https://www.instagram.com/novocinemas_qtr",
-        },
-        {
-          selector: ".flex.gap-x-2 > a:nth-child(4)",
-          expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
-        },
-      ];
-    } else {
-      socialLinks = [
-        {
-          selector: ".flex.items-center.justify-center.w-8.h-8",
-          expectedUrl: "https://www.facebook.com/novocinemas",
-        },
-        {
-          selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
-          expectedUrl: "https://www.youtube.com/user/NovoCinemas",
-        },
-        {
-          selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
-          expectedUrl: "https://www.instagram.com/NovoCinemas",
-        },
-        {
-          selector: ".flex.gap-x-2 > a:nth-child(4)",
-          expectedUrl: "https://x.com/NovoCinemas",
-        },
-      ];
-    }
+    const socialLinks = [
+      {
+        selector: ".flex.items-center.justify-center.w-8.h-8",
+        expectedUrl: "https://www.facebook.com/novocinemasQTR",
+      },
+      {
+        selector: ".flex.gap-x-2.justify-center > a:nth-child(2)",
+        expectedUrl: "https://www.youtube.com/@Novocinemas",
+      },
+      {
+        selector: ".flex.gap-x-2.justify-center > a:nth-child(3)",
+        expectedUrl: "https://www.instagram.com/novocinemas_qtr",
+      },
+      {
+        selector: ".flex.gap-x-2 > a:nth-child(4)",
+        expectedUrl: "https://x.com/novocinemas_qtr?mx=2",
+      },
+    ];
 
     for (let i = 0; i < socialLinks.length; i++) {
       const socialPagePromise = page.waitForEvent("popup");

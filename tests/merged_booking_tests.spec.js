@@ -414,11 +414,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ================== EXPECT DIRECT PAYMENT ==================
     await page.waitForURL((url) => url.pathname.includes("/payment"));
 
-    if (COUNTRY_ID !== 2) {
     await expect(
       page.getByRole("heading", { name: "Payment Options" })
-    ).toBeVisible();} else {
-    await expect(page.getByRole('heading', { name: 'Gift Card & Vouchers' })).toBeVisible();}
+    ).toBeVisible();
 
     // ================== PAYMENT SIDE PANEL ==================
     const paymentSidePanel = page
@@ -1029,13 +1027,11 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
       await expect(page).toHaveURL(/\/payment/);
       // await page.waitForLoadState("networkidle");
-      if (COUNTRY_ID !== 2) {
-        await expect(
-          page.getByRole("heading", {
-            name: /Payment Options|Gift Card & Vouchers/i,
-          })
-        ).toBeVisible();
-      }
+      await expect(
+        page.getByRole("heading", {
+          name: /Payment Options|Gift Card & Vouchers/i,
+        })
+      ).toBeVisible();
 
       const paymentSidePanel = page
         .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1302,10 +1298,8 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     await verifyOffersPromotionsSection(page, isOfferApplied, offerData);
     await verifyCreditCardOption(page);
-    if (COUNTRY_ID !== 2) {
-      await verifyAutoFilledCardNumber(page);
-      await fillPaymentDetails(page);
-    }
+    await verifyAutoFilledCardNumber(page);
+    await fillPaymentDetails(page);
   });
 
   // ============================================================================
@@ -1436,22 +1430,13 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
 
     // Verify response structure
     expect(cancelTransactionResponse.status()).toBe(200);
-    if(COUNTRY_ID === 2) {
     expect(cancelResponseData).toMatchObject({
       statusCode: 200,
       success: true,
       type: "OK",
-      message: "Cancel Transaction Disabled.",
+      message: "Transaction successfully canceled.",
       data: null,
-    })}else{
-      expect(cancelResponseData).toMatchObject({
-        statusCode: 200,
-        success: true,
-        type: "OK",
-        message: "Transaction successfully canceled.",
-        data: null,
-      })
-    };
+    });
 
     // Verify the URL contains the correct reservation ID
     const cancelUrl = cancelTransactionResponse.url();
@@ -1684,21 +1669,12 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     const cancelResponseData = await cancelResponse.json();
 
     expect(cancelResponse.status()).toBe(200);
-    expect(cancelResponseData).toMatchObject(
-      COUNTRY_ID === 2
-        ? {
-            statusCode: 200,
-            success: true,
-            message: "Cancel Transaction Disabled.",
-            data: null,
-          }
-        : {
-            statusCode: 200,
-            success: true,
-            message: "Transaction successfully canceled.",
-            data: null,
-          }
-    );
+    expect(cancelResponseData).toMatchObject({
+      statusCode: 200,
+      success: true,
+      message: "Transaction successfully canceled.",
+      data: null,
+    });
 
     console.log("✅ Cancel transaction API verified");
 
@@ -1870,11 +1846,9 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ======================================================
     console.log("\n=== Verifying Payment Page ===");
 
-    if (COUNTRY_ID !== 2) {
-      await expect(
-        page.getByRole("heading", { name: "Payment Options" })
-      ).toBeVisible();
-    }
+    await expect(
+      page.getByRole("heading", { name: "Payment Options" })
+    ).toBeVisible();
 
     const paymentSidePanel = page
       .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -2189,8 +2163,6 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     page,
     request,
   }) => {
-    test.skip(COUNTRY_ID === 2, "Novo Wallet payment is not available in UAE.");
-    console.log(`===== Test Skipped: Novo Wallet not available in ${COUNTRY_ID} ===== `);
 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
@@ -2352,14 +2324,12 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     // ======================================================
     // VERIFY PAYMENT OPTION VISIBILITY
     // ======================================================
-    if (COUNTRY_ID !== 2) {
-      const creditCardOption = page
-        .locator("div")
-        .filter({ hasText: /^Credit Card$/ })
-        .first();
+    const creditCardOption = page
+      .locator("div")
+      .filter({ hasText: /^Credit Card$/ })
+      .first();
 
-      await expect(creditCardOption).toBeVisible();
-    }
+    await expect(creditCardOption).toBeVisible();
 
     // ================= COMPLETE NOVO WALLET PAYMENT =================
     await applyNovoWalletOnly(page, request, authToken, grandTotal);

@@ -3,7 +3,6 @@ import {
   BASE_URL,
   BACKEND_URL,
   COUNTRY_ID,
-  COUNTRY_NAME,
   CURRENCY,
 } from "./envConfig.js";
 
@@ -1064,31 +1063,8 @@ export async function verifyPricesInPanel(
 // PAYMENT HELPERS
 // ============================================================================
 
-export async function verifyCyberSourceSdkLoaded(page) {
-  const cybersourceFrame = page.frameLocator('iframe[id="__buttonlist"]');
-  const checkoutButton = cybersourceFrame.getByRole("button", {
-    name: /Checkout with card/i,
-  });
-
-  await expect(checkoutButton).toBeVisible({ timeout: 30000 });
-
-  const incompatibleMessage = cybersourceFrame.getByText(
-    /Browser not compatible\.?/i
-  );
-  await expect(incompatibleMessage).toHaveCount(0, { timeout: 3000 });
-
-  console.log(
-    `✅ CyberSource SDK loaded successfully for ${COUNTRY_NAME}: checkout launcher is visible`
-  );
-}
-
 export async function completePayment(page) {
   try {
-    if (COUNTRY_ID === 2) {
-      await verifyCyberSourceSdkLoaded(page);
-      return;
-    }
-
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1152,11 +1128,9 @@ export async function fillPaymentDetails(page) {
 
 export async function verifyPaymentPageBasics(page, sidePanelApiData) {
   await expect(page).toHaveURL(/\/payment/);
-  if (COUNTRY_ID !== 2) {
-    await expect(
-      page.getByRole("heading", { name: "Payment Options" })
-    ).toBeVisible();
-  }
+  await expect(
+    page.getByRole("heading", { name: "Payment Options" })
+  ).toBeVisible();
 
   const paymentSidePanel = page
     .locator(".flex-col.md\\:bg-\\[\\#B3B2B340\\]")
@@ -1179,11 +1153,6 @@ export async function verifyPaymentPageBasics(page, sidePanelApiData) {
 
 export async function verifyCreditCardOption(page) {
   try {
-    if (COUNTRY_ID === 2) {
-      await verifyCyberSourceSdkLoaded(page);
-      return;
-    }
-
     const creditCardOption = page
       .locator("div", { hasText: /^Credit Card$/ })
       .first();
@@ -1625,13 +1594,11 @@ export async function applyPartialGiftCardAndProceedToCreditPayment(
   await expect(appliedButton).toBeDisabled();
 
   // ------------------ Switch to Credit Card ------------------
-  if (COUNTRY_ID !== 2) {
-    const creditCardOption = page
-      .locator("div")
-      .filter({ hasText: /^Credit Card$/ })
-      .first();
-    await creditCardOption.click();
-  }
+  const creditCardOption = page
+    .locator("div")
+    .filter({ hasText: /^Credit Card$/ })
+    .first();
+  await creditCardOption.click();
   await completePayment(page);
 
   return {

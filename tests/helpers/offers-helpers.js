@@ -8,24 +8,14 @@ import {
 } from "./envConfig.js";
 
 const BACKEND_BASE_URL = BACKEND_URL;
-const PRIMARY_BANK_OFFER =
-  COUNTRY_ID === 2
-    ? {
-        name: "Mashreq 50% off",
-        buttonName: /Mashreq 50% off/i,
-        cardBin:
-          process.env.UAE_BANK_OFFER_CARD_BIN ||
-          process.env.BANK_OFFER_CARD_BIN ||
-          "524136",
-      }
-    : {
-        name: "CBQ Offer",
-        buttonName: /CBQ Offer/i,
-        cardBin:
-          process.env.QATAR_BANK_OFFER_CARD_BIN ||
-          process.env.BANK_OFFER_CARD_BIN ||
-          "552400",
-      };
+const PRIMARY_BANK_OFFER = {
+  name: "CBQ Offer",
+  buttonName: /CBQ Offer/i,
+  cardBin:
+    process.env.QATAR_BANK_OFFER_CARD_BIN ||
+    process.env.BANK_OFFER_CARD_BIN ||
+    "552400",
+};
 
 // ============================================================================
 // LOYALTY OFFERS HELPERS
@@ -220,21 +210,18 @@ export async function verifyBankOffers(page, request, sessionId, cinemaId) {
 }
 
 export function setupValidationInterceptors(page) {
-  const panEntriesPromise =
-    COUNTRY_ID === 2
-      ? null
-      : page.waitForResponse(
-          (response) => {
-            const url = response.url();
-            const status = response.status();
-            return (
-              url.includes("vault.dibsy.one") &&
-              url.includes("pan-entries") &&
-              (status === 200 || status === 201)
-            );
-          },
-          { timeout: 20000 }
-        );
+  const panEntriesPromise = page.waitForResponse(
+    (response) => {
+      const url = response.url();
+      const status = response.status();
+      return (
+        url.includes("vault.dibsy.one") &&
+        url.includes("pan-entries") &&
+        (status === 200 || status === 201)
+      );
+    },
+    { timeout: 20000 }
+  );
 
   const offerValidatePromise = page.waitForResponse(
     (response) =>
@@ -274,15 +261,12 @@ export async function validateCard(
     cardNumber
   );
 
-  const dibsyPublicKeyPromise =
-    COUNTRY_ID === 1
-      ? page.waitForResponse(
-          (response) =>
-            response.url().includes("/api/payment/dibsy/public-key/") &&
-            response.status() === 200,
-          { timeout: 20000 }
-        )
-      : null;
+  const dibsyPublicKeyPromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/payment/dibsy/public-key/") &&
+      response.status() === 200,
+    { timeout: 20000 }
+  );
 
   await offerCard
     .getByRole("textbox", { name: "Enter Card Number" })
@@ -325,10 +309,6 @@ export async function validateCard(
         throw new Error("Could not capture PAN entries API response");
       }
     }
-  } else {
-    console.log(
-      `${COUNTRY_NAME} uses CyberSource for bank offer validation; skipping Dibsy PAN entries capture`
-    );
   }
 
   if (panEntriesData) {
@@ -474,12 +454,6 @@ export async function handleBankOffersFlow(page, request, sessionId, cinemaId) {
     .getByRole("button", { name: PRIMARY_BANK_OFFER.buttonName })
     .first()
     .click();
-
-  if (COUNTRY_ID !== 1) {
-    console.log(
-      `Clicked ${PRIMARY_BANK_OFFER.name} - ${COUNTRY_NAME} uses CyberSource; skipping Dibsy public-key API`
-    );
-  }
 
   await validateCardFlow(page);
 }

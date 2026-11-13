@@ -2,7 +2,6 @@ import { test, expect } from "./fixtures/home-popup.fixture.js";
 import {
   BASE_URL,
   BACKEND_URL,
-  COUNTRY_ID,
 } from "./helpers/envConfig.js";
 
 const Email = process.env.LOGIN_EMAIL;
@@ -89,10 +88,6 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
     page,
   }) => {
     test.skip(
-      COUNTRY_ID === 2,
-      "WhatsApp phone OTP login flow is not available for UAE."
-    );
-    test.skip(
       !Phone,
       "LOGIN_PHONE is required for WhatsApp phone OTP login flow."
     );
@@ -137,13 +132,8 @@ test.describe("User Authentication – Login, OTP & Password Recovery", () => {
     await page.goto(`${BASE_URL}/home`);
     await openLoginPopup(page);
 
-    if (COUNTRY_ID !== 2) {
-      await page.getByText("Sign in with OTP").click();
-      await page.getByText("Want to SignIn with Email").click();
-    } else { 
-      await page.getByText("Sign in with Email").click();
-    }
-  
+    await page.getByText("Sign in with OTP").click();
+    await page.getByText("Want to SignIn with Email").click();
 
     await page
       .getByRole("textbox", { name: "Enter your registered email" })

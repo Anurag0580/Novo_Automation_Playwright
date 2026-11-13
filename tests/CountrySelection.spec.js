@@ -1,8 +1,5 @@
 import { test, expect } from "./fixtures/home-popup.fixture.js";
-import {
-  BASE_URL,
-  COUNTRY_NAME,
-} from "./helpers/envConfig.js";
+import { BASE_URL } from "./helpers/envConfig.js";
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
 if (!REAL_DOMAIN_URL) {
@@ -23,20 +20,17 @@ test.describe("Landing Page – Country Selection and Language Toggle Validation
     ).toBeVisible();
 
     const qatarDiv = page.locator("div").filter({ hasText: /^QATAR$/ });
-    const uaeDiv = page.locator("div").filter({ hasText: /^UAE$/ });
 
     await expect(qatarDiv).toBeVisible();
-    await expect(uaeDiv).toBeVisible();
 
     await page.getByRole("button", { name: "العربية" }).click();
 
     await expect(page.getByText("قطر")).toBeVisible();
-    await expect(page.getByText("الإمارات")).toBeVisible();
 
     await page.getByRole("button", { name: "ENG" }).click();
 
     const expectedBaseUrl = new URL(BASE_URL);
-    const selectedCountryDiv = COUNTRY_NAME === "UAE" ? uaeDiv : qatarDiv;
+    const selectedCountryDiv = qatarDiv;
 
     await Promise.all([
       page.waitForURL(

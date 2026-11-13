@@ -1,5 +1,4 @@
 import { test, expect } from "./fixtures/home-popup.fixture.js";
-import { COUNTRY_ID } from "./helpers/envConfig.js";
 import {
   BASE_URL,
   BACKEND_URL,
@@ -69,11 +68,9 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
     );
     await verifyOrderSummary(page, testData);
 
-    if (COUNTRY_ID !== 2) {
-      await expect(
-        page.getByRole("heading", { name: "Payment Options" })
-      ).toBeVisible();
-    }
+    await expect(
+      page.getByRole("heading", { name: "Payment Options" })
+    ).toBeVisible();
     await completePayment(page);
   });
 
@@ -157,11 +154,6 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
   test("TC_03 - Verify Gift Card Top-Up Flow Using Existing Gift Card Number", async ({
     page,
   }) => {
-    test.skip(
-      COUNTRY_ID === 2,
-      "Top-up gift card flow is not available in UAE."
-    );
-
     await navigateToGiftCardFlow(page);
     await expect(
       page.getByRole("heading", { name: "Top Up Your Gift Card" })
@@ -272,13 +264,6 @@ test.describe("Gift Card Management - Purchase, Balance Check, and Top-Up Valida
       .fill(TEST_CARD_NUMBER);
     await page.getByRole("button", { name: "Check balance now" }).click();
     await expect(page.getByText("Balance :")).toBeVisible();
-
-    if (COUNTRY_ID === 2) {
-      await expect(
-        page.getByRole("button", { name: "Add Balance" })
-      ).toHaveCount(0);
-      return;
-    }
 
     await page.getByRole("button", { name: "Add Balance" }).click();
     await expect(page).toHaveURL(
