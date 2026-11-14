@@ -1,5 +1,12 @@
-import { test as base, expect, request } from '@playwright/test';
+import { test as base, expect } from './fixtures.ts';
+import { request } from '@playwright/test';
 import { closePosterIfVisible } from '../helpers/home_helpers.js';
+import {
+  startTestApiTracking,
+  getTestApiSummary,
+  wrapRequestContext,
+  trackBrowserApiCall,
+} from '../helpers/apiTracker.js';
 
 function isHomePageUrl(url) {
   try {
@@ -16,7 +23,31 @@ async function handleHomePopup(page) {
 }
 
 export const test = base.extend({
+  request: async ({ request }, use) => {
+    const wrappedRequest = wrapRequestContext(request, "request");
+    await use(wrappedRequest);
+  },
   page: async ({ page }, use) => {
+    // Intercept page.request for API tracking
+    try {
+      Object.defineProperty(page, 'request', {
+        value: wrapRequestContext(page.request, 'page.request'),
+        configurable: true,
+        writable: true,
+      });
+    } catch {
+      // Ignore if non-configurable
+    }
+
+    // Track API requests initiated by the browser page
+    page.on('request', (req) => {
+      try {
+        trackBrowserApiCall(req.method(), req.url());
+      } catch {
+        // Ignore tracking errors
+      }
+    });
+
     const originalGoto = page.goto.bind(page);
     const originalGoBack = page.goBack.bind(page);
     const originalGoForward = page.goForward.bind(page);
@@ -62,6 +93,8 @@ export const test = base.extend({
   const match = testInfo.title.match(/^(TC(?:[_-][A-Z0-9]+)*?[_-]?\d+)/i);
   const tcId = match ? match[1] : "N/A";
 
+  startTestApiTracking(tcId, testInfo.title);
+
   console.log("\n==================================================");
   console.log(`🚀 ${tcId} STARTED`);
   console.log(`📝 ${testInfo.title}`);
@@ -90,6 +123,12 @@ export const test = base.extend({
     console.log(
       `⚠️ ${tcId} Expected: ${expected ? expected.toUpperCase() : 'UNKNOWN'}, Actual: ${actual ? actual.toUpperCase() : 'UNKNOWN'}`
     );
+  }
+
+  const apiSummary = getTestApiSummary();
+  console.log(`📡 Verification API : ${apiSummary.verification}`);
+  if (apiSummary.hasBrowserApi) {
+    console.log(`🌐 Browser Data API : ${apiSummary.browser}`);
   }
 
   console.log(`📝 ${testInfo.title}`);

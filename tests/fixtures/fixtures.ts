@@ -27,7 +27,7 @@ function assertProfileFree() {
 
 // Overrides the built-in `context` and `page` so every test runs in real Chrome with this profile.
 export const test = base.extend<{ context: BrowserContext; page: Page }>({
-  context: async ({}, use) => {
+  context: async ({ viewport }, use) => {
     assertProfileFree();
     const context = await chromium.launchPersistentContext(PROFILE_DIR, {
       channel: 'chrome',
@@ -39,7 +39,7 @@ export const test = base.extend<{ context: BrowserContext; page: Page }>({
       args: ['--disable-blink-features=AutomationControlled'],
       chromiumSandbox: true, // removes the "--no-sandbox" warning bar
       permissions: ['notifications'], // no "wants to show notifications" popup
-      viewport: null, // use the real window size
+      viewport: viewport,
     });
     await use(context);
     await context.close();
