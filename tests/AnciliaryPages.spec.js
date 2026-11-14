@@ -97,19 +97,33 @@ test.describe("Ancillary Pages – CMS Content, Legal Policies, and Multi-Langua
     }
 
     for (const social of ["facebook", "instagram", "youtube"]) {
-      try {
-        const link = page.locator(`a[href*="${social}"]`).first();
-        const [popup] = await Promise.all([
-          page.waitForEvent("popup"),
-          link.click(),
-        ]);
-        await expect(popup.url()).toContain(social);
-        await popup.close();
-      } catch {
-        console.warn(`${social} link missing`);
-      }
-    }
+  const link = page.locator(`a[href*="${social}"]`).first();
 
+  // Verify link exists
+  await expect(link, `${social} link should exist`).toBeAttached();
+
+  // Verify link is visible
+  await expect(link, `${social} link should be visible`).toBeVisible();
+
+  // Verify URL
+  const href = await link.getAttribute("href");
+
+  expect(href).toBeTruthy();
+  expect(href.toLowerCase()).toContain(social);
+
+  // Verify new tab opens
+  const [popup] = await Promise.all([
+    page.waitForEvent("popup"),
+    link.click(),
+  ]);
+
+  // Wait for popup to navigate to the social media destination
+  await expect(popup).toHaveURL(new RegExp(social, "i"), { timeout: 15000 });
+
+  console.log(`✔ ${social} link working: ${popup.url()}`);
+
+  await popup.close();
+}
     if (en.section_two?.title) {
       await expect(
         page.getByRole("heading", { name: en.section_two.title }),
