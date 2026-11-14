@@ -5,18 +5,28 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // 🔒 Validate env early
-if (!process.env.PROD_FRONTEND_URL || !process.env.PROD_BACKEND_URL) {
-  throw new Error('❌ Missing required environment variables. Check .env file');
+if (!process.env.PROD_FRONTEND_URL) {
+  throw new Error('❌ Missing required PROD_FRONTEND_URL in .env file');
 }
+if (!process.env.mx_token) {
+  throw new Error('❌ Missing required mx_token in .env file');
+}
+
+process.env.PROD_NEW_BACKEND_URL =
+  process.env.PROD_NEW_BACKEND_URL || 'https://web-api.novocinemas.com/api/v3/external';
+process.env.PROD_LEGACY_BACKEND_URL =
+  process.env.PROD_LEGACY_BACKEND_URL || 'https://backend.novocinemas.com/api';
+process.env.PROD_BACKEND_URL =
+  process.env.PROD_BACKEND_URL || 'https://backend.novocinemas.com';
 
 export default defineConfig({
   testDir: './tests',
 
-  timeout: 180000, // 3 minutes per test
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  timeout: 180000,
+fullyParallel: false,
+forbidOnly: !!process.env.CI,
+retries: process.env.CI ? 2 : 0,
+workers: 1,
 
  reporter: [
   ['list'],
