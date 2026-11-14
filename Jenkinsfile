@@ -4,6 +4,7 @@ pipeline {
     environment {
         LOGIN_EMAIL = credentials('novo-qa-login-email')
         LOGIN_PASSWORD = credentials('novo-qa-login-password')
+        MX_TOKEN = credentials('novo-qa-mx-token')
     }
 
     stages {
@@ -17,10 +18,14 @@ pipeline {
         stage('Create .env') {
             steps {
                 bat '''
+@echo off
 (
 echo PROD_FRONTEND_URL=%PROD_FRONTEND_URL%
+echo PROD_NEW_BACKEND_URL=%PROD_NEW_BACKEND_URL%
+echo PROD_LEGACY_BACKEND_URL=%PROD_LEGACY_BACKEND_URL%
 echo PROD_BACKEND_URL=%PROD_BACKEND_URL%
 echo REAL_DOMAIN_URL=%REAL_DOMAIN_URL%
+echo mx_token=%MX_TOKEN%
 echo LOGIN_EMAIL=%LOGIN_EMAIL%
 echo LOGIN_PASSWORD=%LOGIN_PASSWORD%
 echo LOGIN_PHONE=%LOGIN_PHONE%
