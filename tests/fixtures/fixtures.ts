@@ -41,6 +41,15 @@ export const test = base.extend<{ context: BrowserContext; page: Page }>({
       permissions: ['notifications'], // no "wants to show notifications" popup
       viewport: viewport,
     });
+    await context.addCookies([
+      {
+        name: 'language',
+        value: 'en',
+        domain: '.qa.novocinemas.com',
+        path: '/',
+        secure: true,
+      },
+    ]);
     await use(context);
     await context.close();
   },
