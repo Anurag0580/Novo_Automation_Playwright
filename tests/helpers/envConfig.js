@@ -1,4 +1,6 @@
 const BASE_URL = process.env.PROD_FRONTEND_URL;
+const PROD_FRONTEND_URL = process.env.PROD_FRONTEND_URL;
+const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 const NEW_BACKEND_URL =
   process.env.PROD_NEW_BACKEND_URL || "https://web-api.novocinemas.com/api/v3/external";
 const LEGACY_BACKEND_URL =
@@ -7,6 +9,10 @@ const BACKEND_URL = process.env.PROD_BACKEND_URL || "https://backend.novocinemas
 
 if (!BASE_URL) {
   throw new Error("❌ Missing PROD_FRONTEND_URL in .env");
+}
+
+if (!REAL_DOMAIN_URL) {
+  throw new Error("❌ Missing REAL_DOMAIN_URL in .env");
 }
 
 if (!process.env.mx_token) {
@@ -37,6 +43,8 @@ console.log(
 
 export {
   BASE_URL,
+  PROD_FRONTEND_URL,
+  REAL_DOMAIN_URL,
   NEW_BACKEND_URL,
   LEGACY_BACKEND_URL,
   BACKEND_URL,

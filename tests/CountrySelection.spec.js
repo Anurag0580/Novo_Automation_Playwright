@@ -1,45 +1,28 @@
 import { test, expect } from "./fixtures/home-popup.fixture.js";
-import { BASE_URL } from "./helpers/envConfig.js";
-const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
+import { PROD_FRONTEND_URL, REAL_DOMAIN_URL } from "./helpers/envConfig.js";
 
-if (!REAL_DOMAIN_URL) {
-  throw new Error(
-    "❌ REAL_DOMAIN_URL missing in env"
-  );
-}
-
-test.describe("Landing Page – Country Selection and Language Toggle Validation", () => {
-  test("TC_01 – Verify Country Selection and Language Toggle on Landing Page", async ({
+test.describe("Landing Page – Country Selection and Automatic Redirect Validation", () => {
+  test("TC_01 – Verify Automatic Redirect from Real Domain to Qatar Frontend", async ({
     page,
   }) => {
-    await page.goto(`${REAL_DOMAIN_URL}/`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${REAL_DOMAIN_URL}/`);
 
-    await expect(page.getByRole("img", { name: "logo" })).toBeVisible();
+    await page.waitForURL(
+      (url) => url.origin === new URL(PROD_FRONTEND_URL).origin,
+      { timeout: 30000 }
+    );
+
+    const sanitizedFrontendUrl = PROD_FRONTEND_URL.replace(/\/+$/, "");
+    await expect(page).toHaveURL(
+      new RegExp(`^${sanitizedFrontendUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+    );
+
+    await page.waitForLoadState("domcontentloaded");
+
+    console.log("🌍 Automatically redirected to Qatar frontend");
+
     await expect(
-      page.getByRole("heading", { name: "Please select your Country" })
+      page.getByRole("navigation").getByRole("img", { name: "Logo" })
     ).toBeVisible();
-
-    const qatarDiv = page.locator("div").filter({ hasText: /^QATAR$/ });
-
-    await expect(qatarDiv).toBeVisible();
-
-    await page.getByRole("button", { name: "العربية" }).click();
-
-    await expect(page.getByText("قطر")).toBeVisible();
-
-    await page.getByRole("button", { name: "ENG" }).click();
-
-    const expectedBaseUrl = new URL(BASE_URL);
-    const selectedCountryDiv = qatarDiv;
-
-    await Promise.all([
-      page.waitForURL(
-        (url) => url.origin === expectedBaseUrl.origin,
-        { timeout: 10000 }
-      ),
-      selectedCountryDiv.getByRole("button").click(),
-    ]);
-
-    expect(new URL(page.url()).origin).toBe(expectedBaseUrl.origin);
   });
 });

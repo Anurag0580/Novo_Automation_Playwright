@@ -26,17 +26,12 @@ import {
 import { loginAndCaptureTokenBooking } from "./helpers/booking-helpers.js";
 import {
   BASE_URL,
+  PROD_FRONTEND_URL,
+  REAL_DOMAIN_URL,
   BACKEND_URL,
   COUNTRY_ID,
-  COUNTRY_NAME,
   FEATURES,
 } from "./helpers/envConfig.js";
-
-const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
-
-if (!REAL_DOMAIN_URL) {
-  throw new Error("❌ REAL_DOMAIN_URL missing in .env");
-}
 
 test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Language Validation", () => {
   // ==================== TEST CASES ====================
@@ -45,15 +40,20 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     page,
   }) => {
     await page.goto(`${REAL_DOMAIN_URL}/`);
-    await Promise.all ([
-      page.waitForURL("**/home"),
-      page
-      .locator("div")
-      .filter({ hasText: new RegExp(`^${COUNTRY_NAME}$`, "i") })
-      .getByRole("button")
-      .click()
-    ]);
-    console.log(`🌍 Country selected: ${COUNTRY_NAME}`);
+
+    await page.waitForURL(
+      (url) => url.origin === new URL(PROD_FRONTEND_URL).origin,
+      { timeout: 30000 }
+    );
+
+    const sanitizedFrontendUrl = PROD_FRONTEND_URL.replace(/\/+$/, "");
+    await expect(page).toHaveURL(
+      new RegExp(`^${sanitizedFrontendUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`)
+    );
+
+    await page.waitForLoadState("domcontentloaded");
+
+    console.log("🌍 Automatically redirected to Qatar frontend");
 
     await expect(
       page.getByRole("navigation").getByRole("img", { name: "Logo" }),
@@ -125,7 +125,8 @@ test.describe("Homepage – Navigation, Search, Content Sections, and Multi-Lang
     // await expect(
     //   page.getByRole("heading", { name: "Novo Experiences" }),
     // ).toBeVisible();
-    await expect(page.locator('.slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .montserrat_aae9f109-module__l2uvuG__className')).toContainText("Novo Experiences");
+    // await expect(page.locator('.slick-slide.slick-active > div > .relative > .sm\\:absolute > .w-full > .montserrat_aae9f109-module__l2uvuG__className')).toContainText("Novo Experiences");
+    await expect(page.locator('.sm\\:absolute.top-14 > .w-full > .font-app').first()).toContainText("Novo Experiences")
 
     // Private Booking
     await page.goto(`${BASE_URL}/home`);
