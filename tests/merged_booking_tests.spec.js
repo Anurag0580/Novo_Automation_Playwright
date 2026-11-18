@@ -1,4 +1,4 @@
-import { test, expect, request as playwrightRequest } from "./fixtures/home-popup.fixture.js";
+import { test, expect, request as playwrightRequest } from "./fixtures/merged-booking.fixture.js";
 import {
   fetchMoviesFromAPI,
   selectMovieDynamically,
@@ -95,7 +95,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
   }) => {
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -314,7 +314,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     request,
   }) => {
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -491,7 +491,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     // === Use helper functions ===
     const selectedMovie = await selectMovieDynamically(page, request);
@@ -1699,7 +1699,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
   }) => {
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -1948,7 +1948,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
   }) => {
 
     await page.goto(`${BASE_URL}/home`, { waitUntil: "domcontentloaded" });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(
@@ -2167,7 +2167,7 @@ test.describe("Movie Ticket Booking – End-to-End Flows (F&B, Offers, Payments 
     await page.goto(`${BASE_URL}/home`, {
       waitUntil: "domcontentloaded",
     });
-    await page.waitForURL(/novocinemas\.com\/home/);
+    await page.waitForURL(/novocinemas\.com(?:\/home|\/)?/);
 
     const selectedMovie = await selectMovieDynamically(page, request);
     const { movie, movieId } = await getMovieDetails(

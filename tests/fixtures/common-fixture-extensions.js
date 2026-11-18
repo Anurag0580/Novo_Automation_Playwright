@@ -1,0 +1,135 @@
+import { closePosterIfVisible } from '../helpers/home_helpers.js';
+import {
+  startTestApiTracking,
+  getTestApiSummary,
+  wrapRequestContext,
+  trackBrowserApiCall,
+} from '../helpers/apiTracker.js';
+
+function isHomePageUrl(url) {
+  try {
+    return new URL(url).pathname === '/home';
+  } catch {
+    return false;
+  }
+}
+
+async function handleHomePopup(page) {
+  if (isHomePageUrl(page.url())) {
+    await closePosterIfVisible(page);
+  }
+}
+
+export const commonFixtureExtensions = {
+  request: async ({ request }, use) => {
+    const wrappedRequest = wrapRequestContext(request, "request");
+    await use(wrappedRequest);
+  },
+  page: async ({ page }, use) => {
+    // Intercept page.request for API tracking
+    try {
+      Object.defineProperty(page, 'request', {
+        value: wrapRequestContext(page.request, 'page.request'),
+        configurable: true,
+        writable: true,
+      });
+    } catch {
+      // Ignore if non-configurable
+    }
+
+    // Track API requests initiated by the browser page
+    page.on('request', (req) => {
+      try {
+        trackBrowserApiCall(req.method(), req.url());
+      } catch {
+        // Ignore tracking errors
+      }
+    });
+
+    const originalGoto = page.goto.bind(page);
+    const originalGoBack = page.goBack.bind(page);
+    const originalGoForward = page.goForward.bind(page);
+    const originalReload = page.reload.bind(page);
+    const originalWaitForURL = page.waitForURL.bind(page);
+
+    page.goto = async (url, options) => {
+      const response = await originalGoto(url, {
+        waitUntil: 'domcontentloaded',
+        ...options,
+      });
+      await handleHomePopup(page);
+      return response;
+    };
+
+    page.goBack = async (...args) => {
+      const response = await originalGoBack(...args);
+      await handleHomePopup(page);
+      return response;
+    };
+
+    page.goForward = async (...args) => {
+      const response = await originalGoForward(...args);
+      await handleHomePopup(page);
+      return response;
+    };
+
+    page.reload = async (...args) => {
+      const response = await originalReload(...args);
+      await handleHomePopup(page);
+      return response;
+    };
+
+    page.waitForURL = async (...args) => {
+      const result = await originalWaitForURL(...args);
+      await handleHomePopup(page);
+      return result;
+    };
+
+    await use(page);
+  },
+  autoLogger: [async ({}, use, testInfo) => {
+    const match = testInfo.title.match(/^(TC(?:[_-][A-Z0-9]+)*?[_-]?\d+)/i);
+    const tcId = match ? match[1] : "N/A";
+
+    startTestApiTracking(tcId, testInfo.title);
+
+    console.log("\n==================================================");
+    console.log(`🚀 ${tcId} STARTED`);
+    console.log(`📝 ${testInfo.title}`);
+    console.log("==================================================\n");
+
+    await use();
+
+    console.log("\n==================================================");
+
+    const actual = testInfo.status;
+    const expected = testInfo.expectedStatus;
+
+    if (actual === expected) {
+      if (actual === 'passed') {
+        console.log(`✅ ${tcId} PASSED`);
+      } else if (actual === 'failed') {
+        console.log(`❌ ${tcId} FAILED`);
+      } else if (actual === 'timedOut') {
+        console.log(`⏰ ${tcId} TIMED OUT`);
+      } else if (actual === 'skipped') {
+        console.log(`⏭️ ${tcId} SKIPPED`);
+      } else {
+        console.log(`⚠️ ${tcId} STATUS: ${actual}`);
+      }
+    } else {
+      console.log(
+        `⚠️ ${tcId} Expected: ${expected ? expected.toUpperCase() : 'UNKNOWN'}, Actual: ${actual ? actual.toUpperCase() : 'UNKNOWN'}`
+      );
+    }
+
+    const apiSummary = getTestApiSummary();
+    console.log(`📡 Verification API : ${apiSummary.verification}`);
+    if (apiSummary.hasBrowserApi) {
+      console.log(`🌐 Browser Data API : ${apiSummary.browser}`);
+    }
+
+    console.log(`📝 ${testInfo.title}`);
+    console.log("==================================================\n");
+  }, { auto: true }],
+};
