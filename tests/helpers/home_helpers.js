@@ -1,5 +1,11 @@
 import { expect } from '@playwright/test';
-import { BASE_URL, BACKEND_URL, COUNTRY_ID } from "./envConfig.js";
+import {
+  BASE_URL,
+  BACKEND_URL,
+  COUNTRY_ID,
+  NEW_BACKEND_COUNTRY_ID,
+  buildNewBackendUrl,
+} from "./envConfig.js";
 
 const REAL_DOMAIN_URL = process.env.REAL_DOMAIN_URL;
 
@@ -27,7 +33,11 @@ export const LANGUAGE_CONFIG = {
   }
 };
 
-export const OFFER_API = `${BACKEND_URL}/api/home/offer-groups?country_id=${COUNTRY_ID}&channel=web&istop10=true`;
+export const OFFER_API = buildNewBackendUrl("/home/offer-groups", {
+  country_id: NEW_BACKEND_COUNTRY_ID,
+  channel: "web",
+  istop10: "true",
+}).toString();
 
 // ==================== HEADER HELPERS ====================
 
@@ -44,38 +54,68 @@ export const headerButton = (page, name) => {
 export async function setupSearchTracking(page) {
   console.log('📡 Search API tracking enabled');
   const apiCalls = [];
-  let availableMovies = [];
+  let searchResponseMovies = []; // movies from latest search response
+  let preloadedMovies = [];      // movies pre-fetched before any typing
+
+  // --- Pre-fetch the full movie list from the search API so we always have
+  //     real, live movie titles to pick from (no static "Coolie" fallback). ---
+  try {
+    const res = await page.request.get(
+      `${BASE_URL}/api/search?search=&country_id=${NEW_BACKEND_COUNTRY_ID}&channel=web`
+    );
+    if (res.ok()) {
+      const data = await res.json();
+      preloadedMovies = data?.data?.movies ?? [];
+      console.log(`📋 Pre-fetched ${preloadedMovies.length} movies from search API`);
+    }
+  } catch (err) {
+    console.warn('⚠️  Could not pre-fetch movie list:', err.message);
+  }
 
   page.on('request', (req) => {
-    if (req.url().includes('/api/home/search')) {
+    if (req.url().includes('/api/search') || req.url().includes('/api/home/search')) {
       apiCalls.push(req.url());
     }
   });
 
   page.on('response', async (res) => {
-  if (res.url().includes('/api/home/search')) {
+    if (res.url().includes('/api/search') || res.url().includes('/api/home/search')) {
       try {
         const data = await res.json();
         if (data?.data?.movies) {
-          availableMovies = data.data.movies;
+          searchResponseMovies = data.data.movies;
         }
       } catch {
-        // Handle JSON parsing error silently
+        // Ignore JSON parse errors
       }
     }
   });
 
-  const getMovieName = (lang = 'en') => {
-    const movies = availableMovies.filter((m) => (lang === 'ar' ? m.name_ar : m.name));
-    if (!movies.length) {
-      return lang === 'ar' ? 'كولي' : 'Coolie';
+  /**
+   * Pick a random movie title from the pre-fetched list.
+   * @param {'en'|'ar'} lang
+   * @returns {{ title: string, movie: object }} the chosen title and its full object
+   */
+  const pickMovie = (lang = 'en') => {
+    const field = lang === 'ar' ? 'name_ar' : 'name';
+    // Only include movies that have a non-empty title in the requested language
+    const usable = preloadedMovies.filter((m) => m[field] && m[field].trim());
+    if (!usable.length) {
+      // Last-resort fallback if the pre-fetch somehow returned nothing
+      const fallback = lang === 'ar' ? 'حدوتة' : 'Forgotten Island';
+      console.warn(`⚠️  No pre-fetched movies for lang=${lang}, falling back to "${fallback}"`);
+      return { title: fallback, movie: null };
     }
-    const movie = movies[Math.floor(Math.random() * movies.length)];
-    const movieName = lang === 'ar' ? movie.name_ar : movie.name;
-    return movieName.split(' ')[0];
+    const movie = usable[Math.floor(Math.random() * usable.length)];
+    return { title: movie[field].trim(), movie };
   };
 
-  return { apiCalls, getMovieName };
+  /**
+   * Return the latest movies returned by the search API after typing.
+   */
+  const getSearchResponseMovies = () => searchResponseMovies;
+
+  return { apiCalls, pickMovie, getSearchResponseMovies };
 }
 
 // ==================== ELEMENT VISIBILITY HELPERS ====================
@@ -100,10 +140,12 @@ export async function verifyScrollable(locator) {
 
 export async function fetchMoviesFromAPI(page) {
   try {
-    console.log('🎬 Fetching movies from Movies API');
-    const response = await page.request.get(
-      `${BACKEND_URL}/api/home/movies?experienceId=&locationId=&languageId=&genreId=&country_id=${COUNTRY_ID}&channel=web`
-    );
+    console.log('🎬 Fetching movies from Movies API (New Backend)');
+    const moviesUrl = buildNewBackendUrl("/movies", {
+      country_id: NEW_BACKEND_COUNTRY_ID,
+      channel: "web",
+    });
+    const response = await page.request.get(moviesUrl.toString());
 
     if (!response.ok()) {
       return [];
@@ -129,7 +171,7 @@ export async function fetchMoviesFromAPI(page) {
         })) || []
     );
   } catch (error) {
-    console.warn('⚠️ Failed to fetch movies from API');
+    console.warn('⚠️ Failed to fetch movies from API:', error.message);
     return [];
   }
 }
@@ -154,7 +196,7 @@ export async function testMovieInteraction(page, movie, config, shouldNavigateBa
 
   await moviePoster.click();
   await expect(page).toHaveURL(/\/movies\//);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   await expect(page.getByRole('heading', { name: movieTitle })).toBeVisible();
 
@@ -174,7 +216,7 @@ export async function testMovieInteraction(page, movie, config, shouldNavigateBa
     } else {
       await page.goBack();
     }
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 }
 
@@ -188,12 +230,12 @@ export async function runMoviesTest(page, languageKey) {
   expect(apiMovies.length).toBeGreaterThan(0);
 
   await page.goto(`${BASE_URL}/home`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   console.log(`🌐 Switching language to ${languageKey}`);
 
   if (languageKey !== 'english') {
     await page.getByRole('navigation').getByRole('button', { name: config.buttonName }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
   }
 
   if (languageKey === 'english') {
@@ -201,7 +243,7 @@ export async function runMoviesTest(page, languageKey) {
     await expect(page.locator('.flex.flex-col.justify-between').first()).toBeVisible();
 
     for (const text of config.sectionTexts) {
-      await expect(page.locator('body')).toContainText(text);
+      await expect(page.locator('body')).toContainText(new RegExp(text, 'i'));
     }
 
     const filters = [
@@ -229,7 +271,7 @@ export async function runMoviesTest(page, languageKey) {
   console.log('🔍 Navigating via Explore More');
   await expect(page.getByRole('button', { name: config.exploreMoreText }).first()).toBeVisible();
   await page.getByRole('button', { name: config.exploreMoreText }).first().click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 
   if (apiMovies.length >= 3) {
     const movie = apiMovies[2];
@@ -276,6 +318,8 @@ function getOfferCandidates(page, offer, isArabic = false) {
   const locators = [];
 
   if (offer?.id) {
+    locators.push(slider.locator(`a[href*="/promotions/"][href*="${offer.id}"]`));
+    locators.push(slider.locator(`[href*="/promotions/"][href*="${offer.id}"]`));
     locators.push(slider.locator(`a[href*="/promotions/${offer.id}"]`));
     locators.push(slider.locator(`[href*="/promotions/${offer.id}"]`));
   }
@@ -428,7 +472,7 @@ export async function clickOfferAndWaitForNavigation(page, offer, isArabic = fal
   const offerText = getOfferText(offer, isArabic);
   console.log(`🖱️  Clicking offer: "${offerText}"`);
 
-  const expectedUrl = new RegExp(`/promotions/${offer.id}`);
+  const expectedUrl = new RegExp(`/promotions/(?:.*-)?${offer.id}(?:[/?#]|$)`);
 
   try {
     const visibleOffer = await bringOfferIntoView(page, offer, isArabic);
@@ -444,10 +488,12 @@ export async function clickOfferAndWaitForNavigation(page, offer, isArabic = fal
 
   try {
     await page.waitForURL(expectedUrl, { timeout: 8000 });
-    console.log(`✅ Navigation successful to: /promotions/${offer.id}`);
+    console.log(`✅ Navigation successful to: ${page.url()}`);
     return true;
   } catch {
-    console.warn(`⚠️  Navigation timeout for offer: "${offerText}"`);
+    console.warn(
+      `⚠️  Navigation timeout for offer: "${offerText}" (current URL: ${page.url()})`,
+    );
     return false;
   }
 }
@@ -491,16 +537,18 @@ export async function testOffersInLanguage(page, offers, isArabic = false) {
 // ==================== QUICK BOOK HELPERS ====================
 // ============== API Helpers ==============
 export async function fetchQuickBookData(request, params = {}) {
-  const url = new URL(`${BACKEND_URL}/api/home/dynamic-quick-book/v2`);
   console.log("🔡 Fetching Quick Book API with params:", params);
 
-  url.searchParams.set("country_id", String(params.country_id ?? COUNTRY_ID));
-  url.searchParams.set("channel", params.channel ?? "web");
-  
-  if (params.movie_id) url.searchParams.set("movie_id", String(params.movie_id));
-  if (params.cinema_id) url.searchParams.set("cinema_id", String(params.cinema_id));
-  if (params.experience_id) url.searchParams.set("experience_id", String(params.experience_id));
-  if (params.date) url.searchParams.set("date", String(params.date));
+  const qp = {
+    country_id: params.country_id ?? NEW_BACKEND_COUNTRY_ID,
+    channel: params.channel ?? "web",
+  };
+  if (params.movie_id) qp.movie_id = String(params.movie_id);
+  if (params.cinema_id) qp.cinema_id = String(params.cinema_id);
+  if (params.experience_id) qp.experience_id = String(params.experience_id);
+  if (params.date) qp.date = String(params.date);
+
+  const url = buildNewBackendUrl("/quick-book", qp);
 
   const res = await request.get(url.toString(), {
     headers: {
@@ -529,7 +577,7 @@ export function formatDateForUI(isoDate) {
 export async function waitForQuickBookApi(page) {
   console.log("⏳ Waiting for Quick Book API response...");
   await page.waitForResponse(
-    (res) => res.url().includes("/api/home/dynamic-quick-book/v2") && res.status() === 200,
+    (res) => (res.url().includes("/quick-book") || res.url().includes("/api/home/dynamic-quick-book/v2")) && res.status() === 200,
     { timeout: DEFAULT_TIMEOUT }
   );
   console.log("✅ Quick Book API response received");

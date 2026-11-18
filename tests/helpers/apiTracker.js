@@ -67,6 +67,22 @@ export function startTestApiTracking(tcId, testTitle) {
 }
 
 /**
+ * Strips sensitive query parameters (especially mx_token) from a URL string for safe logging.
+ */
+function sanitizeUrlForLogs(urlStr) {
+  if (!urlStr || typeof urlStr !== "string") return urlStr;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.searchParams.has("mx_token")) {
+      parsed.searchParams.set("mx_token", "[REDACTED]");
+    }
+    return parsed.toString();
+  } catch {
+    return urlStr.replace(/mx_token=[^&]+/g, "mx_token=[REDACTED]");
+  }
+}
+
+/**
  * Extracts pathname + search from a URL string safely.
  */
 function getEndpointPath(urlStr) {
@@ -89,14 +105,15 @@ export function trackAndLogVerificationApi(method, urlStr, contextLabel = "Verif
   if (!urlStr) return;
 
   const backend = classifyBackendApi(urlStr);
-  const endpoint = getEndpointPath(urlStr);
+  const sanitizedUrl = sanitizeUrlForLogs(urlStr);
+  const endpoint = getEndpointPath(sanitizedUrl);
 
   const entry = {
     type: backend ? backend.type : "EXTERNAL",
     label: backend ? backend.label : "EXTERNAL API",
     method: (method || "GET").toUpperCase(),
     endpoint,
-    fullUrl: urlStr,
+    fullUrl: sanitizedUrl,
   };
 
   currentTestApiState.verificationApis.push(entry);
@@ -106,7 +123,7 @@ export function trackAndLogVerificationApi(method, urlStr, contextLabel = "Verif
     console.log(`   Backend Type : ${backend.label}`);
     console.log(`   Method       : ${entry.method}`);
     console.log(`   Endpoint     : ${endpoint}`);
-    console.log(`   Full URL     : ${urlStr}\n`);
+    console.log(`   Full URL     : ${sanitizedUrl}\n`);
   } else if (!urlStr.includes("facebook.com") && !urlStr.includes("instagram.com") && !urlStr.includes("youtube.com")) {
     console.log(`📡 [API VERIFICATION DATA]`);
     console.log(`   Backend Type : ⚪ EXTERNAL / THIRD-PARTY`);
@@ -129,7 +146,8 @@ export function trackBrowserApiCall(method, urlStr) {
   const backend = classifyBackendApi(urlStr);
   if (!backend) return;
 
-  const endpoint = getEndpointPath(urlStr);
+  const sanitizedUrl = sanitizeUrlForLogs(urlStr);
+  const endpoint = getEndpointPath(sanitizedUrl);
 
   const isDuplicate = currentTestApiState.browserApis.some(
     (b) => b.method === method && b.endpoint === endpoint
@@ -141,7 +159,7 @@ export function trackBrowserApiCall(method, urlStr) {
       label: backend.shortLabel,
       method: (method || "GET").toUpperCase(),
       endpoint,
-      fullUrl: urlStr,
+      fullUrl: sanitizedUrl,
     });
   }
 }
