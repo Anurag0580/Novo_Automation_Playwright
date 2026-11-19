@@ -10,6 +10,17 @@ allure-results/
 
 # Env files
 .env
+.env.*
+!.env.example
+
+# Authentication, Storage State & Session files
+*storage-state*.json
+*auth-state*.json
+*.state.json
+auth.json
+state.json
+cookies*.json
+session*.json
 
 #static files
 webcontents.txt
